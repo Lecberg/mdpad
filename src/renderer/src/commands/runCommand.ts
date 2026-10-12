@@ -6,7 +6,7 @@ import { redo, undo } from '@milkdown/kit/prose/history'
 import { TextSelection, type Command } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { callCommand } from '@milkdown/kit/utils'
-import type { CommandId } from '../../../shared/commands'
+import { isMainCommand, type CommandId } from '../../../shared/commands'
 import type { MenuCommandEvent } from '../../../shared/ipc-types'
 import { getActiveEditor, getActiveSourceView } from '../editor/activeEditor'
 import { closeFind, openFind } from '../editor/find'
@@ -27,10 +27,10 @@ import { openLinkEditor } from '../editor/links'
 import { normalizeWith, serializeEditor } from '../editor/markdownCore'
 import { textToSave } from '../markdown/saveText'
 import { documentStore } from '../state/documentStore'
-import { uiStore } from '../state/uiStore'
+import { toggleSidebarTab, uiStore } from '../state/uiStore'
 
 /** Read the latest content from whichever editor is mounted into the store. */
-function flushEditor(): void {
+export function flushEditor(): void {
   const doc = documentStore.get()
   if (doc.mode === 'source') {
     const view = getActiveSourceView()
@@ -186,7 +186,31 @@ function insertTable(): boolean {
   return true
 }
 
+/** Show the folder search panel and focus its input. */
+function openSearch(): boolean {
+  const { searchFocusRequest } = uiStore.get()
+  uiStore.set({
+    sidebarOpen: true,
+    sidebarTab: 'search',
+    searchFocusRequest: searchFocusRequest + 1
+  })
+  return true
+}
+
+const forwardToMain = (event: MenuCommandEvent): boolean => {
+  if (!isMainCommand(event.id)) return false
+  window.api.runMainCommand(event.id)
+  return true
+}
+
 const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
+  'file.new': forwardToMain,
+  'file.open': forwardToMain,
+  'file.openFolder': forwardToMain,
+  'file.closeFolder': forwardToMain,
+  'file.close': forwardToMain,
+  'file.quickOpen': () => (uiStore.set({ quickOpenOpen: !uiStore.get().quickOpenOpen }), true),
+  'file.preferences': () => (uiStore.set({ settingsOpen: true, quickOpenOpen: false }), true),
   'file.save': (e) => (void saveDocument({ thenClose: e.thenClose }), true),
   'file.saveAs': (e) => (void saveDocument({ saveAs: true, thenClose: e.thenClose }), true),
   'edit.undo': () => runHistory('undo'),
@@ -212,7 +236,10 @@ const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
   'format.strikethrough': () => runVisual(toggleStrikethrough),
   'format.link': () => withVisualView((view) => openLinkEditor(view)),
   'view.sourceMode': () => (toggleSourceMode(), true),
-  'view.outline': () => (uiStore.set({ sidebarOpen: !uiStore.get().sidebarOpen }), true)
+  'view.toggleSidebar': () => (uiStore.set({ sidebarOpen: !uiStore.get().sidebarOpen }), true),
+  'view.outline': () => (toggleSidebarTab('outline'), true),
+  'view.files': () => (toggleSidebarTab('files'), true),
+  'view.search': () => openSearch()
 }
 
 /** Run a command. Returns false if it does not apply right now (e.g. bold in source mode). */

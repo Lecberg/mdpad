@@ -193,6 +193,14 @@ Each milestone ends with a git commit/tag and a usable app.
 6. Optional: custom title bar (`titleBarStyle: 'hidden'` + `titleBarOverlay`) with menu in a hamburger, Typora-style.
 7. Recent files / folders in File menu.
 
+**As built (M4):** folder watching uses Node's recursive `fs.watch` (no chokidar); the sidebar
+has a third tab, Search; user CSS is a single `userData/custom.css` (re-applied on save)
+rather than a themes folder; Preferences is a dialog (`settings/SettingsDialog.tsx`) covering
+theme, font, font size, text width, autosave and shortcuts. Not done: image folder pattern,
+stringify style options (both would change what gets written to files, so they wait until
+there is a reason), and the optional custom title bar. All shortcuts, including New/Open/Close,
+are now handled by the renderer keymap so they can be customised.
+
 ### M5 — Extras
 1. **Math**: `remark-math` + KaTeX node views for `$inline$` and `$$block$$` (edit source when focused, render when not).
 2. **Mermaid**: code blocks with lang `mermaid` show rendered diagram below when not focused.

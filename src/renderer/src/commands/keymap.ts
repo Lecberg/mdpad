@@ -1,66 +1,55 @@
-import { COMMANDS, type CommandId } from '../../../shared/commands'
+import {
+  matchesShortcut,
+  parseAccelerator,
+  type KeyLike,
+  type Shortcut
+} from '../../../shared/accelerators'
+import {
+  COMMANDS,
+  shortcutFor,
+  type CommandId,
+  type ShortcutOverrides
+} from '../../../shared/commands'
 
-// Maps Electron accelerator strings (from shared/commands.ts) to keyboard events. Keys are
-// matched by physical key (`event.code`), so Ctrl+Shift+[ works even though Shift turns
-// "[" into "{".
+// Which command a key press triggers: the command table's shortcuts, with the user's
+// overrides from Preferences applied.
 
-interface Shortcut {
-  ctrl: boolean
-  shift: boolean
-  alt: boolean
-  code: string
+export { parseAccelerator }
+
+function buildBindings(overrides: ShortcutOverrides): Array<[Shortcut, CommandId]> {
+  return (Object.keys(COMMANDS) as CommandId[]).flatMap((id) => {
+    const accelerator = shortcutFor(id, overrides)
+    if (!accelerator) return []
+    try {
+      return [[parseAccelerator(accelerator), id] as [Shortcut, CommandId]]
+    } catch {
+      return []
+    }
+  })
 }
 
-const PUNCTUATION_CODES: Record<string, string> = {
-  '`': 'Backquote',
-  '/': 'Slash',
-  '\\': 'Backslash',
-  '[': 'BracketLeft',
-  ']': 'BracketRight',
-  '-': 'Minus',
-  '=': 'Equal',
-  ',': 'Comma',
-  '.': 'Period',
-  ';': 'Semicolon',
-  "'": 'Quote'
+const defaultBindings = buildBindings({})
+let bindings = defaultBindings
+
+export function setShortcutOverrides(overrides: ShortcutOverrides): void {
+  bindings = buildBindings(overrides)
 }
-
-export function parseAccelerator(accelerator: string): Shortcut {
-  const parts = accelerator.split('+')
-  const key = parts.pop()!
-  const modifiers = new Set(parts.map((p) => p.toLowerCase()))
-  let code: string
-  if (/^[a-z]$/i.test(key)) code = `Key${key.toUpperCase()}`
-  else if (/^[0-9]$/.test(key)) code = `Digit${key}`
-  else if (/^F\d{1,2}$/i.test(key)) code = key.toUpperCase()
-  else if (PUNCTUATION_CODES[key]) code = PUNCTUATION_CODES[key]
-  else throw new Error(`Unsupported accelerator key: ${accelerator}`)
-  return {
-    ctrl: modifiers.has('cmdorctrl') || modifiers.has('ctrl') || modifiers.has('control'),
-    shift: modifiers.has('shift'),
-    alt: modifiers.has('alt'),
-    code
-  }
-}
-
-type KeyLike = Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey' | 'code'>
-
-const BINDINGS: Array<[Shortcut, CommandId]> = Object.entries(COMMANDS).flatMap(([id, spec]) => {
-  const accelerator = (spec as { accelerator?: string }).accelerator
-  return accelerator ? [[parseAccelerator(accelerator), id as CommandId]] : []
-})
 
 export function commandForKey(event: KeyLike): CommandId | null {
-  for (const [s, id] of BINDINGS) {
-    if (
-      event.code === s.code &&
-      event.ctrlKey === s.ctrl &&
-      event.shiftKey === s.shift &&
-      event.altKey === s.alt &&
-      !event.metaKey
-    ) {
-      return id
-    }
+  for (const [shortcut, id] of bindings) {
+    if (matchesShortcut(event, shortcut)) return id
   }
   return null
+}
+
+/**
+ * A key press that is one of the app's default shortcuts but no longer bound to anything
+ * (the user moved or removed it). It should do nothing, rather than fall through to the
+ * editors' own built-in bindings (e.g. Milkdown's Ctrl+B).
+ */
+export function isReleasedDefault(event: KeyLike): boolean {
+  return (
+    commandForKey(event) === null &&
+    defaultBindings.some(([shortcut]) => matchesShortcut(event, shortcut))
+  )
 }

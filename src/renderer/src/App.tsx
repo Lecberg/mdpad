@@ -4,16 +4,20 @@ import { TextSelection } from '@milkdown/kit/prose/state'
 import { FindBar } from './app/FindBar'
 import { LinkPopover } from './app/LinkPopover'
 import { NoticeBanner } from './app/NoticeBanner'
+import { QuickOpen } from './app/QuickOpen'
 import { Sidebar } from './app/Sidebar'
 import { StatusBar } from './app/StatusBar'
 import { saveImages } from './commands/images'
 import { installKeymap } from './commands/installKeymap'
+import { revealMatch } from './commands/openDocument'
 import { runCommand } from './commands/runCommand'
 import { getActiveEditor, getActiveSourceView } from './editor/activeEditor'
 import { MilkdownEditor } from './editor/MilkdownEditor'
+import { SettingsDialog } from './settings/SettingsDialog'
 import { SourceEditor } from './source/SourceEditor'
 import type { LoadedFile } from '../../shared/ipc-types'
 import { documentStore, useDocument } from './state/documentStore'
+import { startFolderSync } from './state/folderStore'
 import { noticeStore } from './state/noticeStore'
 import { uiStore, useUi } from './state/uiStore'
 
@@ -68,31 +72,39 @@ function App(): React.JSX.Element {
     })
     const offLoad = window.api.onLoadFile((file) => documentStore.load(file))
     const offChanged = window.api.onFileChanged(onFileChanged)
+    const offRenamed = window.api.onDocRenamed((path) => documentStore.renamed(path))
     const offCommand = window.api.onMenuCommand((event) => void runCommand(event))
+    const offFolder = startFolderSync()
     const offKeymap = installKeymap()
     return () => {
       cancelled = true
       offLoad()
       offChanged()
+      offRenamed()
       offCommand()
+      offFolder()
       offKeymap()
     }
   }, [])
 
   useEffect(() => {
-    document.title = `${doc.dirty ? '● ' : ''}${fileName(doc.path)} — mdpad`
-  }, [doc.path, doc.dirty])
+    document.title = `${doc.dirty || doc.changePending ? '● ' : ''}${fileName(doc.path)} — mdpad`
+  }, [doc.path, doc.dirty, doc.changePending])
 
-  // After switching between visual and source mode, restore the relative scroll position
-  // once the new editor has rendered its content.
+  // Once a newly mounted editor has rendered its content: after switching between visual
+  // and source mode, restore the relative scroll position; after opening a folder search
+  // result, select the match.
   const editorReady = doc.mode === 'source' || doc.baseline !== null
   useEffect(() => {
-    const ratio = uiStore.get().pendingScrollRatio
-    if (ratio === null || !editorReady) return
+    const { pendingScrollRatio: ratio, pendingReveal: reveal } = uiStore.get()
+    if ((ratio === null && reveal === null) || !editorReady) return
     requestAnimationFrame(() => {
       const scroller = document.querySelector('.editor-scroll')
-      if (scroller) scroller.scrollTop = ratio * (scroller.scrollHeight - scroller.clientHeight)
-      uiStore.set({ pendingScrollRatio: null })
+      if (scroller && ratio !== null) {
+        scroller.scrollTop = ratio * (scroller.scrollHeight - scroller.clientHeight)
+      }
+      if (reveal) revealMatch(reveal)
+      uiStore.set({ pendingScrollRatio: null, pendingReveal: null })
     })
   }, [doc.loadId, editorReady])
 
@@ -131,6 +143,8 @@ function App(): React.JSX.Element {
       </div>
       <StatusBar doc={doc} />
       <LinkPopover />
+      <QuickOpen />
+      <SettingsDialog />
     </div>
   )
 }

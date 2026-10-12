@@ -4,7 +4,8 @@ import type { DocState } from '../state/documentStore'
 function saveState(doc: DocState): string {
   if (doc.saving) return 'Saving…'
   if (doc.error) return 'Save failed'
-  if (doc.dirty) return 'Unsaved changes'
+  // An edit not yet read back from the editor (changePending) counts as unsaved too.
+  if (doc.dirty || doc.changePending) return 'Unsaved changes'
   return doc.path ? 'Saved' : 'New document'
 }
 

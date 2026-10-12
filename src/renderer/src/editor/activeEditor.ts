@@ -21,3 +21,13 @@ export function setActiveSourceView(view: SourceView | null): void {
 export function getActiveSourceView(): SourceView | null {
   return source
 }
+
+/** Put keyboard focus back in the document (e.g. after closing a dialog). */
+export function focusEditor(): void {
+  if (source) {
+    source.focus()
+    return
+  }
+  const dom = document.querySelector<HTMLElement>('.ProseMirror')
+  dom?.focus({ preventScroll: true })
+}

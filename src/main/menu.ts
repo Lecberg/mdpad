@@ -1,11 +1,15 @@
 import { BaseWindow, BrowserWindow, Menu, dialog, type MenuItemConstructorOptions } from 'electron'
-import { COMMANDS, HEADING_COMMANDS, type CommandId } from '../shared/commands'
-import { createDocumentWindow, openFile, sendCommand } from './window'
-
-export const MARKDOWN_FILTERS = [
-  { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] },
-  { name: 'All Files', extensions: ['*'] }
-]
+import { basename } from 'path'
+import {
+  COMMANDS,
+  HEADING_COMMANDS,
+  isMainCommand,
+  shortcutFor,
+  type CommandId
+} from '../shared/commands'
+import { services } from './appContext'
+import { MAIN_COMMANDS } from './mainCommands'
+import { isFolderPath, openFile, openFolder, sendCommand } from './window'
 
 /** The window a menu click applies to: the one Electron reports, else the focused one. */
 function targetWindow(win: BaseWindow | undefined): BrowserWindow | null {
@@ -13,33 +17,62 @@ function targetWindow(win: BaseWindow | undefined): BrowserWindow | null {
 }
 
 /**
- * Menu item for a renderer command. The shortcut is only displayed: the renderer's keymap
- * handles the key itself, and the menu forwards clicks. Its id is the command id.
+ * Menu item for a command. The shortcut is only displayed: the renderer's keymap handles
+ * the key itself (so user-defined shortcuts and tests work the same), and the menu runs or
+ * forwards clicks. Its id is the command id.
  */
-function forward(id: CommandId): MenuItemConstructorOptions {
-  const spec: { label: string; accelerator?: string } = COMMANDS[id]
+function command(id: CommandId): MenuItemConstructorOptions {
   return {
     id,
-    label: spec.label,
-    accelerator: spec.accelerator,
+    label: COMMANDS[id].label,
+    accelerator: shortcutFor(id, services().settings.current.shortcuts),
     registerAccelerator: false,
     click: (_item, win) => {
       const target = targetWindow(win)
-      if (target) sendCommand(target, id)
+      if (isMainCommand(id)) MAIN_COMMANDS[id](target)
+      else if (target) sendCommand(target, id)
     }
   }
 }
 
-async function showOpenDialog(win: BrowserWindow | null): Promise<void> {
-  const options = {
-    properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
-    filters: MARKDOWN_FILTERS
+/** "&" marks a mnemonic in Windows menu labels; paths must show it literally. */
+const menuLabel = (text: string): string => text.replace(/&/g, '&&')
+
+async function openRecentFolder(path: string, win: BrowserWindow | null): Promise<void> {
+  if (await isFolderPath(path)) {
+    openFolder(path, win)
+    return
   }
-  const result = win
-    ? await dialog.showOpenDialog(win, options)
-    : await dialog.showOpenDialog(options)
-  if (result.canceled) return
-  for (const path of result.filePaths) await openFile(path, win)
+  dialog.showErrorBox('Could not open folder', `${path}\n\nThe folder no longer exists.`)
+  void services().recent.remove(path)
+}
+
+function recentMenu(): MenuItemConstructorOptions[] {
+  const { files, folders } = services().recent.current
+  const items: MenuItemConstructorOptions[] = files.map((path) => ({
+    label: menuLabel(path),
+    click: (_item, win) => void openFile(path, targetWindow(win))
+  }))
+  if (folders.length > 0) {
+    if (items.length > 0) items.push({ type: 'separator' })
+    for (const path of folders) {
+      items.push({
+        label: menuLabel(`${basename(path)}  —  ${path}`),
+        click: (_item, win) => void openRecentFolder(path, targetWindow(win))
+      })
+    }
+  }
+  if (items.length === 0) items.push({ label: 'No Recent Files', enabled: false })
+  items.push(
+    { type: 'separator' },
+    {
+      id: 'file.clearRecent',
+      label: 'Clear Recently Opened',
+      enabled: files.length + folders.length > 0,
+      click: () => void services().recent.clear()
+    }
+  )
+  return items
 }
 
 export function buildMenu(): Menu {
@@ -47,36 +80,29 @@ export function buildMenu(): Menu {
     {
       label: '&File',
       submenu: [
-        {
-          id: 'file.new',
-          label: 'New',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => createDocumentWindow()
-        },
-        {
-          id: 'file.open',
-          label: 'Open…',
-          accelerator: 'CmdOrCtrl+O',
-          click: (_item, win) => void showOpenDialog(targetWindow(win))
-        },
+        command('file.new'),
         { type: 'separator' },
-        forward('file.save'),
-        forward('file.saveAs'),
+        command('file.open'),
+        command('file.openFolder'),
+        { id: 'file.openRecent', label: 'Open Recent', submenu: recentMenu() },
+        command('file.quickOpen'),
         { type: 'separator' },
-        {
-          id: 'file.close',
-          label: 'Close',
-          accelerator: 'CmdOrCtrl+W',
-          click: (_item, win) => targetWindow(win)?.close()
-        },
+        command('file.save'),
+        command('file.saveAs'),
+        { type: 'separator' },
+        command('file.closeFolder'),
+        command('file.close'),
+        { type: 'separator' },
+        command('file.preferences'),
+        { type: 'separator' },
         { role: 'quit', label: 'Exit' }
       ]
     },
     {
       label: '&Edit',
       submenu: [
-        forward('edit.undo'),
-        forward('edit.redo'),
+        command('edit.undo'),
+        command('edit.redo'),
         { type: 'separator' },
         { role: 'cut' },
         { role: 'copy' },
@@ -85,42 +111,46 @@ export function buildMenu(): Menu {
         { type: 'separator' },
         { role: 'selectAll' },
         { type: 'separator' },
-        forward('edit.find'),
-        forward('edit.replace')
+        command('edit.find'),
+        command('edit.replace'),
+        command('view.search')
       ]
     },
     {
       label: '&Paragraph',
       submenu: [
-        ...HEADING_COMMANDS.map(forward),
+        ...HEADING_COMMANDS.map(command),
         { type: 'separator' },
-        forward('paragraph.paragraph'),
+        command('paragraph.paragraph'),
         { type: 'separator' },
-        forward('paragraph.quote'),
-        forward('paragraph.orderedList'),
-        forward('paragraph.bulletList'),
-        forward('paragraph.codeBlock'),
-        forward('paragraph.table'),
+        command('paragraph.quote'),
+        command('paragraph.orderedList'),
+        command('paragraph.bulletList'),
+        command('paragraph.codeBlock'),
+        command('paragraph.table'),
         { type: 'separator' },
-        forward('paragraph.horizontalRule')
+        command('paragraph.horizontalRule')
       ]
     },
     {
       label: 'F&ormat',
       submenu: [
-        forward('format.bold'),
-        forward('format.italic'),
-        forward('format.code'),
-        forward('format.strikethrough'),
+        command('format.bold'),
+        command('format.italic'),
+        command('format.code'),
+        command('format.strikethrough'),
         { type: 'separator' },
-        forward('format.link')
+        command('format.link')
       ]
     },
     {
       label: '&View',
       submenu: [
-        forward('view.sourceMode'),
-        forward('view.outline'),
+        command('view.sourceMode'),
+        { type: 'separator' },
+        command('view.toggleSidebar'),
+        command('view.outline'),
+        command('view.files'),
         { type: 'separator' },
         // Ctrl+0 is "Paragraph" (as in Typora), so zoom moves to Ctrl+Shift.
         { role: 'resetZoom', accelerator: 'CmdOrCtrl+Shift+0' },
@@ -135,4 +165,9 @@ export function buildMenu(): Menu {
     }
   ]
   return Menu.buildFromTemplate(template)
+}
+
+/** Rebuild the menu after shortcuts or the recent list changed. */
+export function refreshMenu(): void {
+  Menu.setApplicationMenu(buildMenu())
 }

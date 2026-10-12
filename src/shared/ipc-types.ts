@@ -1,7 +1,8 @@
 // Single source of truth for the API the preload script exposes as `window.api`.
 // Main-process handlers, the preload bridge, and the renderer all import from here.
 
-import type { CommandId } from './commands'
+import type { CommandId, MainCommandId } from './commands'
+import type { Settings } from './settings'
 
 export interface RuntimeVersions {
   electron: string
@@ -43,6 +44,62 @@ export interface MenuCommandEvent {
   thenClose?: boolean
 }
 
+/** A folder or Markdown file in an open folder. */
+export interface TreeNode {
+  name: string
+  path: string
+  kind: 'dir' | 'file'
+  children?: TreeNode[]
+}
+
+/** The Markdown files and folders inside a window's open folder. */
+export interface FolderSnapshot {
+  root: string
+  children: TreeNode[]
+  /** The folder is very large and only part of it is listed. */
+  truncated: boolean
+}
+
+export interface SearchMatch {
+  /** 1-based line and 0-based column of the match in the file's text. */
+  line: number
+  column: number
+  /** 0-based index of this match among all matches in the file. */
+  occurrence: number
+  /** The line (shortened around the match), and where the match is inside it. */
+  preview: string
+  previewStart: number
+  previewEnd: number
+}
+
+export interface SearchFileResult {
+  path: string
+  matches: SearchMatch[]
+}
+
+export interface SearchResult {
+  files: SearchFileResult[]
+  total: number
+  /** There were more matches than the result lists. */
+  truncated: boolean
+}
+
+export type OpenResult =
+  | { kind: 'loaded'; file: LoadedFile }
+  /** The file is already open in another window, which was brought to the front. */
+  | { kind: 'elsewhere' }
+  | { kind: 'error'; message: string }
+
+/** Result of a file-tree operation; neither `path` nor `error` means the user cancelled. */
+export type FsResult = { ok: true; path: string } | { ok: false; error?: string }
+
+export type SaveChoice = 'save' | 'discard' | 'cancel'
+
+export interface RecentList {
+  files: string[]
+  folders: string[]
+}
+
 export const IpcChannel = {
   windowReady: 'window:ready',
   windowClose: 'window:close',
@@ -55,7 +112,23 @@ export const IpcChannel = {
   imageSave: 'image:save',
   draftWrite: 'draft:write',
   draftDiscard: 'draft:discard',
-  menuCommand: 'menu:command'
+  menuCommand: 'menu:command',
+  mainCommand: 'main:command',
+  settingsGetSync: 'settings:get-sync',
+  settingsUpdate: 'settings:update',
+  settingsChanged: 'settings:changed',
+  customCssOpen: 'settings:open-custom-css',
+  folderGet: 'folder:get',
+  folderChanged: 'folder:changed',
+  folderSearch: 'folder:search',
+  docOpenHere: 'doc:open-here',
+  docRenamed: 'doc:renamed',
+  askToSave: 'doc:ask-to-save',
+  entryCreate: 'entry:create',
+  entryRename: 'entry:rename',
+  entryTrash: 'entry:trash',
+  entryReveal: 'entry:reveal',
+  recentGet: 'recent:get'
 } as const
 
 export interface MdpadApi {
@@ -79,4 +152,30 @@ export interface MdpadApi {
   /** Subscribe to changes of this window's file made by other programs. */
   onFileChanged(callback: (file: LoadedFile) => void): () => void
   onMenuCommand(callback: (event: MenuCommandEvent) => void): () => void
+  /** Ask the main process to carry out a command (new window, open dialogs, close). */
+  runMainCommand(id: MainCommandId): void
+
+  /** Settings at the time this window was created; later changes arrive via onSettingsChanged. */
+  initialSettings: Settings
+  updateSettings(patch: Partial<Settings>): void
+  onSettingsChanged(callback: (settings: Settings) => void): () => void
+  /** Create (if needed) and open the user's custom CSS file. */
+  openCustomCss(): void
+
+  /** The folder open in this window, if any. */
+  getFolder(): Promise<FolderSnapshot | null>
+  onFolderChanged(callback: (folder: FolderSnapshot | null) => void): () => void
+  searchFolder(query: string, matchCase: boolean): Promise<SearchResult>
+  /** Load a file from this window's folder (or the recent list) into this window. */
+  openInWindow(path: string): Promise<OpenResult>
+  /** Ask whether to save changes to `name` before it is replaced. */
+  askToSave(name: string): Promise<SaveChoice>
+  /** This window's document file was renamed or moved (e.g. from the file tree). */
+  onDocRenamed(callback: (path: string) => void): () => void
+  createEntry(parentDir: string, name: string, kind: 'file' | 'dir'): Promise<FsResult>
+  renameEntry(path: string, newName: string): Promise<FsResult>
+  /** Move a file or folder to the Recycle Bin, after asking. */
+  trashEntry(path: string): Promise<FsResult>
+  revealInExplorer(path: string): void
+  getRecent(): Promise<RecentList>
 }

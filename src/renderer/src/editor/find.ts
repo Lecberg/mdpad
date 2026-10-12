@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { Plugin, type EditorState } from '@milkdown/kit/prose/state'
+import { Plugin, TextSelection, type EditorState } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { $prose } from '@milkdown/kit/utils'
 import {
@@ -143,6 +143,36 @@ export const findNextMatch = (): void => run(findNext)
 export const findPreviousMatch = (): void => run(findPrev)
 export const replaceMatch = (): void => run(replaceNext)
 export const replaceAllMatches = (): void => run(replaceAll)
+
+/**
+ * Select the `occurrence`-th match of `text` (0-based; the last one if there are fewer) and
+ * scroll it into view, e.g. to show a folder search result. Returns false if none matches.
+ */
+export function selectOccurrence(
+  editorView: EditorView,
+  text: string,
+  caseSensitive: boolean,
+  occurrence: number
+): boolean {
+  const query = new SearchQuery({ search: text, caseSensitive, literal: true })
+  if (!query.valid || !text) return false
+  let target: { from: number; to: number } | null = null
+  let pos = 0
+  for (let i = 0; i <= occurrence; i++) {
+    const match = query.findNext(editorView.state, pos)
+    if (!match) break
+    target = match
+    pos = match.to > match.from ? match.to : match.to + 1
+  }
+  if (!target) return false
+  const { tr, doc } = editorView.state
+  editorView.dispatch(tr.setSelection(TextSelection.create(doc, target.from, target.to)))
+  const { node } = editorView.domAtPos(target.from)
+  const element = node instanceof HTMLElement ? node : node.parentElement
+  element?.scrollIntoView({ block: 'center' })
+  editorView.focus()
+  return true
+}
 
 /** prosemirror-search plus keeping the counts current while the document changes. */
 export const findPlugins = [

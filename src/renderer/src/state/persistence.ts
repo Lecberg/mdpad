@@ -1,10 +1,11 @@
 import { currentFileText, saveDocument } from '../commands/runCommand'
 import { documentStore, type DocState } from './documentStore'
 import { noticeStore } from './noticeStore'
+import { settingsStore } from './settingsStore'
 
-// Background saving: autosave for documents that have a file, and crash-recovery drafts
-// for any document with unsaved changes. Both wait for a pause in typing, and both hold off
-// while a notice (recovered text, outside change) is waiting for the user's decision.
+// Background saving: autosave (unless turned off in Preferences) for documents that have a
+// file, and crash-recovery drafts for any document with unsaved changes. Both wait for a
+// pause in typing, and both hold off while a notice (recovered text, outside change) is waiting for the user's decision.
 
 const AUTOSAVE_DELAY_MS = 2000
 const DRAFT_DELAY_MS = 2000
@@ -21,10 +22,12 @@ export function startAutosave(): () => void {
     if (content === lastContent) return
     lastContent = content
     clearTimeout(timer)
-    if (!doc.path || !doc.dirty) return
+    if (!doc.path || !doc.dirty || !settingsStore.get().autosave) return
     timer = setTimeout(() => {
       const latest = documentStore.get()
-      if (latest.path && latest.dirty && !noticeStore.get()) void saveDocument({ silent: true })
+      if (latest.path && latest.dirty && !noticeStore.get() && settingsStore.get().autosave) {
+        void saveDocument({ silent: true })
+      }
     }, AUTOSAVE_DELAY_MS)
   })
   return () => {

@@ -28,11 +28,11 @@ body,
 ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.18) padding-box;
+  background: var(--color-scrollbar) padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.32);
+  background-color: var(--color-scrollbar-hover);
 }
 
 :focus-visible {
@@ -89,19 +89,11 @@ body,
   font-size: var(--ui-size);
 }
 
-.sidebar-title {
-  margin: 0;
-  padding: 14px 16px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .sidebar-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: 16px;
+  padding: 8px 0 16px;
 }
 
 .outline {
@@ -216,7 +208,7 @@ body,
 
 .link-popover-input:focus {
   border-color: var(--color-focus);
-  box-shadow: 0 0 0 2px rgba(47, 116, 192, 0.2);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .link-popover-hint {
@@ -251,7 +243,7 @@ body,
 }
 
 .source-editor .cm-activeLine {
-  background: rgba(0, 0, 0, 0.025);
+  background: var(--color-active-line);
 }
 
 .source-editor .cm-selectionBackground,

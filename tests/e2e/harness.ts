@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process'
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import {
@@ -29,11 +29,23 @@ export class Mdpad {
   /** Profile folder for this test, so tests never touch the real app's data or instance. */
   readonly userData = join(this.dir, 'user-data')
 
+  /** Uncaught main-process errors are written here (see launch). */
+  private readonly errorLog = join(this.dir, 'main-errors.log')
+
   async launch(...files: string[]): Promise<void> {
     const app = await electron.launch({
       args: ['.', ...files],
       env: { ...process.env, MDPAD_USER_DATA: this.userData }
     })
+    // Record uncaught main-process errors (and fail the test in dispose) rather than
+    // letting Electron show its "A JavaScript error occurred" dialog. They go to a file so
+    // errors during shutdown are caught as well.
+    await app.evaluate((_electron, logFile) => {
+      const fs = process.getBuiltinModule('fs')
+      process.on('uncaughtException', (error) => {
+        fs.appendFileSync(logFile, `${String(error?.stack ?? error)}\n\n`)
+      })
+    }, this.errorLog)
     const page = await app.firstWindow()
     await page.locator('.ProseMirror').waitFor()
     this.launched = { app, page }
@@ -125,7 +137,9 @@ export class Mdpad {
         .catch(() => {}) // the test may already have closed the app
       await this.launched.app.close()
     }
+    const errors = existsSync(this.errorLog) ? readFileSync(this.errorLog, 'utf8') : ''
     rmSync(this.dir, { recursive: true, force: true })
+    if (errors) throw new Error(`Uncaught errors in the main process:\n${errors}`)
   }
 }
 

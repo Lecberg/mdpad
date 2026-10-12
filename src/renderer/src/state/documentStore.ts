@@ -115,6 +115,11 @@ export const documentStore = {
     set({ diskText: text, dirty })
   },
 
+  /** The file was renamed or moved (e.g. from the file tree); the content is unchanged. */
+  renamed(path: string): void {
+    set({ path })
+  },
+
   /** Back to an empty untitled document (e.g. discarding a recovered one). */
   reset(): void {
     set({

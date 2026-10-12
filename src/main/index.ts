@@ -1,14 +1,18 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import type { InitialDoc } from '../shared/ipc-types'
-import { filesFromArgv } from './argv'
+import { setServices } from './appContext'
+import { pathsFromArgv, type ArgvPaths } from './argv'
+import { CustomCss } from './customCss'
 import { registerIpc } from './ipc'
-import { buildMenu } from './menu'
+import { refreshMenu } from './menu'
 import { handleLocalFiles, registerLocalFileScheme } from './protocol'
 import { readTextFile } from './services/fileService'
+import { RecentStore } from './services/recentService'
 import { RecoveryStore } from './services/recoveryService'
-import { createDocumentWindow, openFile, setRecoveryStore } from './window'
+import { SettingsStore } from './services/settingsService'
+import { createDocumentWindow, openFile, openFolder } from './window'
 
 // Tests (and anyone wanting a separate profile) can point the app at another data folder.
 // This must happen before the single-instance lock, which is tied to the data folder.
@@ -16,11 +20,15 @@ if (process.env.MDPAD_USER_DATA) app.setPath('userData', process.env.MDPAD_USER_
 
 registerLocalFileScheme()
 
-async function openFilesOrBlank(files: string[]): Promise<void> {
-  if (files.length === 0) {
+const argvPaths = (argv: string[], cwd: string): ArgvPaths =>
+  pathsFromArgv(argv, cwd, process.defaultApp ? app.getAppPath() : undefined)
+
+async function openPathsOrBlank({ files, folders }: ArgvPaths): Promise<void> {
+  if (files.length === 0 && folders.length === 0) {
     createDocumentWindow()
     return
   }
+  for (const folder of folders) openFolder(folder)
   for (const file of files) await openFile(file)
 }
 
@@ -52,7 +60,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   // A second launch (e.g. double-clicking another .md file) hands its files to us.
   app.on('second-instance', (_event, argv, cwd) => {
-    void openFilesOrBlank(filesFromArgv(argv, cwd))
+    void openPathsOrBlank(argvPaths(argv, cwd))
   })
 
   app.whenReady().then(async () => {
@@ -63,16 +71,26 @@ if (!app.requestSingleInstanceLock()) {
       optimizer.watchWindowShortcuts(window)
     })
 
+    const userData = app.getPath('userData')
+    const settings = new SettingsStore(join(userData, 'settings.json'))
+    const recent = new RecentStore(join(userData, 'recent.json'))
+    const recovery = new RecoveryStore(join(userData, 'recovery'))
+    const customCss = new CustomCss(join(userData, 'custom.css'))
+    await Promise.all([settings.load(), recent.load(), customCss.load()])
+    setServices({ settings, recent, recovery, customCss })
+    nativeTheme.themeSource = settings.current.theme
+
     handleLocalFiles()
     registerIpc()
-    Menu.setApplicationMenu(buildMenu())
+    refreshMenu()
+    recent.onChange(refreshMenu)
 
-    const recovery = new RecoveryStore(join(app.getPath('userData'), 'recovery'))
-    setRecoveryStore(recovery)
     const restored = await restoreDrafts(recovery)
 
-    const files = filesFromArgv(process.argv, process.cwd())
-    if (files.length > 0 || restored === 0) await openFilesOrBlank(files)
+    const paths = argvPaths(process.argv, process.cwd())
+    if (paths.files.length + paths.folders.length > 0 || restored === 0) {
+      await openPathsOrBlank(paths)
+    }
   })
 
   app.on('window-all-closed', () => {
