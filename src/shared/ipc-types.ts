@@ -42,6 +42,7 @@ export const IpcChannel = {
   docLoad: 'doc:load',
   fileSave: 'file:save',
   fileSaveAsDialog: 'file:save-as-dialog',
+  fileOpenLink: 'file:open-link',
   menuCommand: 'menu:command'
 } as const
 
@@ -54,6 +55,8 @@ export interface MdpadApi {
   reportDocStatus(status: DocStatus): void
   saveFile(path: string, text: string, format: TextFormat): Promise<SaveResult>
   showSaveAsDialog(defaultPath: string | null): Promise<string | null>
+  /** Open a relative link target (resolved against this window's document folder). */
+  openLinkTarget(href: string): void
   /** Subscribe to files the main process loads into this window. Returns an unsubscribe fn. */
   onLoadFile(callback: (file: LoadedFile) => void): () => void
   onMenuCommand(callback: (event: MenuCommandEvent) => void): () => void

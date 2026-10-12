@@ -41,16 +41,7 @@ export async function openSession(original: string): Promise<Session> {
     finalNewline,
     saveText() {
       const current = serializeEditor(editor)
-      return textToSave(
-        {
-          original,
-          baseline,
-          dirty: current !== baseline,
-          format: { eol: '\n', bom: false, finalNewline }
-        },
-        current,
-        (md) => normalizeWith(editor, md)
-      )
+      return textToSave({ original, baseline, current }, current, (md) => normalizeWith(editor, md))
     },
     async destroy() {
       await editor.destroy()

@@ -1,0 +1,253 @@
+/* Application chrome: layout, sidebar, status bar, popovers, source editor. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-text);
+}
+
+::selection {
+  background: var(--color-selection);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.32);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* ---------- Layout ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  cursor: text;
+}
+
+.page {
+  max-width: var(--page-width);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: var(--page-padding-top) var(--page-padding-x) 45vh;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-chrome-bg);
+  color: var(--color-chrome-text);
+  font-family: var(--font-ui);
+  font-size: var(--ui-size);
+}
+
+.sidebar-title {
+  margin: 0;
+  padding: 14px 16px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+.outline {
+  margin: 0;
+  padding: 0 8px;
+  list-style: none;
+}
+
+.outline-item {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outline-item:hover {
+  background: var(--color-chrome-hover);
+}
+
+.outline-item[aria-current='location'] {
+  background: var(--color-chrome-active);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.outline-untitled,
+.outline-empty {
+  color: var(--color-faint);
+  font-style: italic;
+}
+
+.outline-empty {
+  margin: 0;
+  padding: 4px 16px;
+}
+
+/* ---------- Status bar ---------- */
+
+.status-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  height: var(--status-height);
+  padding: 0 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-chrome-bg);
+  color: var(--color-chrome-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-note,
+.status-count {
+  cursor: default;
+}
+
+.status-note {
+  cursor: help;
+}
+
+.status-mode {
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--color-chrome-active);
+  font-weight: 600;
+}
+
+/* ---------- Link popover ---------- */
+
+.link-popover {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-popover-bg);
+  box-shadow: var(--shadow-popover);
+  font-family: var(--font-ui);
+  font-size: var(--ui-size);
+}
+
+.link-popover-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+}
+
+.link-popover-input:focus {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 2px rgba(47, 116, 192, 0.2);
+}
+
+.link-popover-hint {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+/* ---------- Source mode ---------- */
+
+.page-source {
+  font-size: 14.5px;
+}
+
+.source-editor .cm-editor {
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.source-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
+.source-editor .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.65;
+}
+
+.source-editor .cm-content {
+  padding: 0;
+  caret-color: var(--color-text);
+}
+
+.source-editor .cm-activeLine {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.source-editor .cm-selectionBackground,
+.source-editor .cm-focused .cm-selectionBackground {
+  background: var(--color-selection) !important;
+}

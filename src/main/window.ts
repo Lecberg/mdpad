@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog, shell, type WebContents } from 'electron'
-import { basename, join, resolve } from 'path'
+import { stat } from 'fs/promises'
+import { basename, dirname, extname, join, resolve } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { IpcChannel, type DocStatus, type LoadedFile } from '../shared/ipc-types'
 import type { CommandId } from '../shared/commands'
@@ -91,9 +92,9 @@ export function createDocumentWindow(file: LoadedFile | null = null): BrowserWin
     }
   })
 
-  // Only http(s) links may leave the app; everything else is blocked.
+  // Only web and mail links may leave the app; everything else is blocked.
   win.webContents.setWindowOpenHandler((details) => {
-    if (/^https?:\/\//i.test(details.url)) shell.openExternal(details.url)
+    if (/^(https?:\/\/|mailto:)/i.test(details.url)) shell.openExternal(details.url)
     return { action: 'deny' }
   })
   win.webContents.on('will-navigate', (event) => event.preventDefault())
@@ -105,6 +106,45 @@ export function createDocumentWindow(file: LoadedFile | null = null): BrowserWin
   }
 
   return win
+}
+
+const TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
+
+/**
+ * Open a relative link from a document. Markdown/text files open in the app; anything else
+ * is only revealed in Explorer (never executed, since links come from document content).
+ */
+export async function openLinkTarget(
+  win: BrowserWindow,
+  docPath: string | null,
+  href: string
+): Promise<void> {
+  if (!docPath) {
+    dialog.showMessageBox(win, {
+      type: 'info',
+      message: 'Save this document first to open relative links.'
+    })
+    return
+  }
+  let target: string
+  try {
+    target = resolve(dirname(docPath), decodeURIComponent(href.split('#')[0]))
+  } catch {
+    return
+  }
+  let isFile = false
+  try {
+    isFile = (await stat(target)).isFile()
+  } catch {
+    // reported below
+  }
+  if (!isFile) {
+    dialog.showMessageBox(win, { type: 'warning', message: `File not found:\n${target}` })
+  } else if (TEXT_EXTENSIONS.has(extname(target).toLowerCase())) {
+    await openFile(target)
+  } else {
+    shell.showItemInFolder(target)
+  }
 }
 
 /**

@@ -1,18 +1,19 @@
 import type { DocState } from '../state/documentStore'
 import { applyFinalNewline, mergeEdits } from './preserveFormatting'
 
-type SaveInput = Pick<DocState, 'original' | 'baseline' | 'dirty' | 'format'>
+type SaveInput = Pick<DocState, 'original' | 'baseline' | 'current'>
 
 /**
- * The LF text to write for a document whose editor currently serializes to `markdown`.
- * An unedited document is written back exactly as it was read.
+ * The LF text to write for a visual-mode document whose editor serializes to `markdown`.
+ * If the editor content is unchanged, that is exactly `original`.
  */
 export function textToSave(
   doc: SaveInput,
   markdown: string,
   normalize: (markdown: string) => string
 ): string {
-  if (!doc.dirty || doc.baseline === null) return doc.original
+  if (doc.baseline === null || markdown === doc.baseline) return doc.original
   const merged = mergeEdits(doc.original, doc.baseline, markdown, normalize)
-  return applyFinalNewline(merged, doc.format.finalNewline)
+  const finalNewline = doc.original === '' || doc.original.endsWith('\n')
+  return applyFinalNewline(merged, finalNewline)
 }

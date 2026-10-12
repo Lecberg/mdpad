@@ -17,9 +17,9 @@ export default defineConfig({
       {
         resolve: { alias },
         test: {
-          name: 'markdown',
+          name: 'renderer',
           environment: 'happy-dom',
-          include: ['tests/markdown/**/*.test.ts']
+          include: ['tests/markdown/**/*.test.ts', 'tests/renderer/**/*.test.ts']
         }
       }
     ]

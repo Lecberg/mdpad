@@ -1,12 +1,23 @@
 import type { Editor } from '@milkdown/kit/core'
+import type { EditorView as SourceView } from '@codemirror/view'
 
-// The window's single editor instance, for commands that run outside React.
-let active: Editor | null = null
+// The window's editor instances, for commands that run outside React. Only one is mounted
+// at a time: the visual (Milkdown) editor or the source (CodeMirror) editor.
+let visual: Editor | null = null
+let source: SourceView | null = null
 
 export function setActiveEditor(editor: Editor | null): void {
-  active = editor
+  visual = editor
 }
 
 export function getActiveEditor(): Editor | null {
-  return active
+  return visual
+}
+
+export function setActiveSourceView(view: SourceView | null): void {
+  source = view
+}
+
+export function getActiveSourceView(): SourceView | null {
+  return source
 }

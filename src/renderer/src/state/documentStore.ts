@@ -2,38 +2,51 @@ import { useSyncExternalStore } from 'react'
 import type { LoadedFile, TextFormat } from '../../../shared/ipc-types'
 import { ensureFinalNewline } from '../markdown/preserveFormatting'
 
+export type EditorMode = 'wysiwyg' | 'source'
+
 export interface DocState {
-  /** Changes whenever a different document is loaded; used to remount the editor. */
+  /** Changes whenever an editor must be (re)mounted with new content. */
   loadId: number
   path: string | null
+  format: TextFormat
   /** LF-only text as last read from / written to disk. */
+  diskText: string
+  mode: EditorMode
+
+  // Visual mode
+  /** Text the visual editor was loaded from; the merge base for saving (see saveText.ts). */
   original: string
-  format: TextFormat & { finalNewline: boolean }
   /** Editor serialization of `original` (null until the editor has loaded it). */
   baseline: string | null
   /** Latest editor serialization. */
   current: string | null
-  dirty: boolean
-  /** The document changed but has not been re-serialized yet, so `dirty` may be stale. */
-  changePending: boolean
   /** The editor would rewrite some syntax of `original` if those blocks get edited. */
   normalizes: boolean
+
+  // Source mode
+  /** Latest source text (source mode only). */
+  sourceText: string
+
+  dirty: boolean
+  /** The document changed but has not been re-read yet, so `dirty` may be stale. */
+  changePending: boolean
   saving: boolean
   error: string | null
 }
 
-const NEW_DOC_FORMAT = { eol: '\n', bom: false, finalNewline: true } as const
-
 let state: DocState = {
   loadId: 0,
   path: null,
+  format: { eol: '\n', bom: false },
+  diskText: '',
+  mode: 'wysiwyg',
   original: '',
-  format: { ...NEW_DOC_FORMAT },
   baseline: null,
   current: null,
+  normalizes: false,
+  sourceText: '',
   dirty: false,
   changePending: false,
-  normalizes: false,
   saving: false,
   error: null
 }
@@ -44,6 +57,9 @@ function set(patch: Partial<DocState>): void {
   state = { ...state, ...patch }
   for (const listener of listeners) listener()
 }
+
+const visualDirty = (original: string, baseline: string | null, current: string | null): boolean =>
+  original !== state.diskText || (baseline !== null && current !== baseline)
 
 export const documentStore = {
   get: (): DocState => state,
@@ -57,58 +73,97 @@ export const documentStore = {
     set({
       loadId: state.loadId + 1,
       path: file.path,
+      format: { eol: file.eol, bom: file.bom },
+      diskText: file.text,
       original: file.text,
-      format: {
-        eol: file.eol,
-        bom: file.bom,
-        finalNewline: file.text === '' || file.text.endsWith('\n')
-      },
       baseline: null,
       current: null,
+      normalizes: false,
+      sourceText: file.text,
       dirty: false,
       changePending: false,
-      normalizes: false,
       saving: false,
       error: null
     })
   },
 
-  /** The editor finished loading `original` and serialized it as `markdown`. */
+  /** The visual editor finished loading `original` and serialized it as `markdown`. */
   editorReady(markdown: string): void {
     set({
       baseline: markdown,
       current: markdown,
-      dirty: false,
       changePending: false,
+      dirty: state.original !== state.diskText,
       normalizes: markdown !== ensureFinalNewline(state.original)
     })
   },
 
-  /** The document changed; its serialization will follow via editorChanged. */
-  editorTouched(): void {
-    if (state.baseline === null || state.changePending) return
+  /** The document changed; its new content will follow via editorChanged/sourceChanged. */
+  touched(): void {
+    if (state.changePending) return
+    if (state.mode === 'wysiwyg' && state.baseline === null) return
     set({ changePending: true })
   },
 
   editorChanged(markdown: string): void {
-    if (state.baseline === null) return
-    set({ current: markdown, dirty: markdown !== state.baseline, changePending: false })
+    if (state.mode !== 'wysiwyg' || state.baseline === null) return
+    set({
+      current: markdown,
+      dirty: visualDirty(state.original, state.baseline, markdown),
+      changePending: false
+    })
+  },
+
+  sourceChanged(text: string): void {
+    if (state.mode !== 'source') return
+    set({ sourceText: text, dirty: text !== state.diskText, changePending: false })
+  },
+
+  /** Switch to source mode showing `text` (what saving would write right now). */
+  enterSource(text: string): void {
+    set({
+      mode: 'source',
+      loadId: state.loadId + 1,
+      sourceText: text,
+      dirty: text !== state.diskText,
+      changePending: false
+    })
+  },
+
+  /** Back to visual mode; the source text becomes the visual editor's merge base. */
+  exitSource(): void {
+    set({
+      mode: 'wysiwyg',
+      loadId: state.loadId + 1,
+      original: state.sourceText,
+      baseline: null,
+      current: null,
+      dirty: state.sourceText !== state.diskText,
+      changePending: false
+    })
   },
 
   saveStarted(): void {
     set({ saving: true, error: null })
   },
 
-  /** `written` is the LF text now on disk; `savedMarkdown` the serialization it came from. */
-  saveSucceeded(path: string, written: string, savedMarkdown: string): void {
+  /**
+   * `written` is the LF text now on disk. In visual mode, `savedMarkdown` is the editor
+   * serialization it was produced from.
+   */
+  saveSucceeded(path: string, written: string, savedMarkdown: string | null): void {
+    const common = { path, diskText: written, saving: false, error: null }
+    if (state.mode === 'source') {
+      set({ ...common, dirty: state.sourceText !== written })
+      return
+    }
+    const baseline = savedMarkdown ?? state.baseline
     set({
-      path,
+      ...common,
       original: written,
-      baseline: savedMarkdown,
-      dirty: state.current !== savedMarkdown,
-      normalizes: savedMarkdown !== ensureFinalNewline(written),
-      saving: false,
-      error: null
+      baseline,
+      dirty: state.current !== baseline,
+      normalizes: baseline !== null && baseline !== ensureFinalNewline(written)
     })
   },
 
@@ -119,8 +174,8 @@ export const documentStore = {
 
 /**
  * Keep the main process's close guard up to date. Runs synchronously on every store change
- * (not in a React effect) and counts unserialized changes as dirty, so a close right after
- * a keystroke still prompts.
+ * (not in a React effect) and counts unread changes as dirty, so a close right after a
+ * keystroke still prompts.
  */
 export function reportStatusToMain(): void {
   let last = ''

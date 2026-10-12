@@ -1,3 +1,4 @@
+import { useDocInfo } from '../state/docInfoStore'
 import type { DocState } from '../state/documentStore'
 
 function saveState(doc: DocState): string {
@@ -7,13 +8,17 @@ function saveState(doc: DocState): string {
   return doc.path ? 'Saved' : 'New document'
 }
 
+const plural = (n: number, word: string): string =>
+  `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`
+
 export function StatusBar({ doc }: { doc: DocState }): React.JSX.Element {
+  const { words, characters } = useDocInfo()
   return (
     <footer className="status-bar" data-testid="status-bar">
       <span className="status-path" title={doc.path ?? undefined}>
         {doc.path ?? 'Untitled'}
       </span>
-      {doc.normalizes && (
+      {doc.mode === 'wysiwyg' && doc.normalizes && (
         <span
           className="status-note"
           data-testid="normalize-note"
@@ -22,6 +27,18 @@ export function StatusBar({ doc }: { doc: DocState }): React.JSX.Element {
           Edited blocks may be reformatted
         </span>
       )}
+      {doc.mode === 'source' && (
+        <span className="status-mode" data-testid="mode">
+          Source
+        </span>
+      )}
+      <span
+        className="status-count"
+        data-testid="word-count"
+        title={plural(characters, 'character')}
+      >
+        {plural(words, 'word')}
+      </span>
       <span className="status-save" data-testid="save-state">
         {saveState(doc)}
       </span>

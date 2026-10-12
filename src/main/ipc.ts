@@ -8,7 +8,7 @@ import {
 } from '../shared/ipc-types'
 import { MARKDOWN_FILTERS } from './menu'
 import { writeTextFile } from './services/fileService'
-import { allowWrite, canWrite, getRecord } from './window'
+import { allowWrite, canWrite, getRecord, openLinkTarget } from './window'
 
 export function registerIpc(): void {
   ipcMain.handle(IpcChannel.windowReady, (event): LoadedFile | null => {
@@ -47,6 +47,11 @@ export function registerIpc(): void {
       }
     }
   )
+
+  ipcMain.on(IpcChannel.fileOpenLink, (event, href: string) => {
+    const record = getRecord(event.sender)
+    if (record) void openLinkTarget(record.win, record.status.path, href)
+  })
 
   ipcMain.handle(
     IpcChannel.fileSaveAsDialog,

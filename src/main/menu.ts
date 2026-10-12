@@ -1,5 +1,5 @@
 import { BaseWindow, BrowserWindow, Menu, dialog, type MenuItemConstructorOptions } from 'electron'
-import type { CommandId } from '../shared/commands'
+import { COMMANDS, HEADING_COMMANDS, type CommandId } from '../shared/commands'
 import { createDocumentWindow, openFile, sendCommand } from './window'
 
 export const MARKDOWN_FILTERS = [
@@ -12,22 +12,21 @@ function targetWindow(win: BaseWindow | undefined): BrowserWindow | null {
   return win instanceof BrowserWindow ? win : BrowserWindow.getFocusedWindow()
 }
 
-/** Menu item that forwards a command to the window's renderer. Its id is the command id. */
-function forward(
-  label: string,
-  id: CommandId,
-  accelerator: string,
-  extra: Partial<MenuItemConstructorOptions> = {}
-): MenuItemConstructorOptions {
+/**
+ * Menu item for a renderer command. The shortcut is only displayed: the renderer's keymap
+ * handles the key itself, and the menu forwards clicks. Its id is the command id.
+ */
+function forward(id: CommandId): MenuItemConstructorOptions {
+  const spec: { label: string; accelerator?: string } = COMMANDS[id]
   return {
     id,
-    label,
-    accelerator,
+    label: spec.label,
+    accelerator: spec.accelerator,
+    registerAccelerator: false,
     click: (_item, win) => {
       const target = targetWindow(win)
       if (target) sendCommand(target, id)
-    },
-    ...extra
+    }
   }
 }
 
@@ -61,8 +60,8 @@ export function buildMenu(): Menu {
           click: (_item, win) => void showOpenDialog(targetWindow(win))
         },
         { type: 'separator' },
-        forward('Save', 'file.save', 'CmdOrCtrl+S'),
-        forward('Save As…', 'file.saveAs', 'CmdOrCtrl+Shift+S'),
+        forward('file.save'),
+        forward('file.saveAs'),
         { type: 'separator' },
         {
           id: 'file.close',
@@ -76,10 +75,8 @@ export function buildMenu(): Menu {
     {
       label: '&Edit',
       submenu: [
-        // The editor's own keymap handles Ctrl+Z/Y so undo stays inside its history;
-        // the menu only shows the shortcut and forwards clicks.
-        forward('Undo', 'edit.undo', 'CmdOrCtrl+Z', { registerAccelerator: false }),
-        forward('Redo', 'edit.redo', 'CmdOrCtrl+Y', { registerAccelerator: false }),
+        forward('edit.undo'),
+        forward('edit.redo'),
         { type: 'separator' },
         { role: 'cut' },
         { role: 'copy' },
@@ -90,11 +87,40 @@ export function buildMenu(): Menu {
       ]
     },
     {
+      label: '&Paragraph',
+      submenu: [
+        ...HEADING_COMMANDS.map(forward),
+        { type: 'separator' },
+        forward('paragraph.paragraph'),
+        { type: 'separator' },
+        forward('paragraph.quote'),
+        forward('paragraph.orderedList'),
+        forward('paragraph.bulletList'),
+        forward('paragraph.codeBlock'),
+        { type: 'separator' },
+        forward('paragraph.horizontalRule')
+      ]
+    },
+    {
+      label: 'F&ormat',
+      submenu: [
+        forward('format.bold'),
+        forward('format.italic'),
+        forward('format.code'),
+        { type: 'separator' },
+        forward('format.link')
+      ]
+    },
+    {
       label: '&View',
       submenu: [
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        forward('view.sourceMode'),
+        forward('view.outline'),
+        { type: 'separator' },
+        // Ctrl+0 is "Paragraph" (as in Typora), so zoom moves to Ctrl+Shift.
+        { role: 'resetZoom', accelerator: 'CmdOrCtrl+Shift+0' },
+        { role: 'zoomIn', accelerator: 'CmdOrCtrl+Shift+=' },
+        { role: 'zoomOut', accelerator: 'CmdOrCtrl+Shift+-' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
         { type: 'separator' },

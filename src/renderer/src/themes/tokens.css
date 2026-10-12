@@ -1,0 +1,56 @@
+/* Design tokens. Every color, font and size in the app and document comes from here, so a
+   theme (dark mode in M4) only has to redefine these variables. */
+
+:root {
+  /* Typography */
+  --font-text: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --font-ui: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+  --text-size: 16px;
+  --text-line-height: 1.7;
+  --ui-size: 13px;
+
+  /* Heading scale (relative to body text) */
+  --h1-size: 2.1em;
+  --h2-size: 1.65em;
+  --h3-size: 1.4em;
+  --h4-size: 1.2em;
+  --h5-size: 1em;
+  --h6-size: 1em;
+
+  /* Layout */
+  --page-width: 820px;
+  --page-padding-x: 48px;
+  --page-padding-top: 56px;
+  --sidebar-width: 260px;
+  --status-height: 26px;
+  --block-gap: 0.85em;
+
+  /* Colors */
+  --color-bg: #ffffff;
+  --color-text: #333333;
+  --color-heading: #1f2328;
+  --color-muted: #777777;
+  --color-faint: #a0a4a8;
+  --color-border: #e5e7ea;
+  --color-border-strong: #d0d7de;
+  --color-link: #2f74c0;
+  --color-selection: #b5d6fc;
+  --color-focus: #2f74c0;
+  --color-code-bg: #f3f4f4;
+  --color-code-text: #3b4252;
+  --color-pre-bg: #f8f8f8;
+  --color-quote-bar: #dfe2e5;
+  --color-syntax-marker: #a7adb3;
+  --color-syntax-keyword: #a626a4;
+  --color-syntax-string: #50a14f;
+  --color-syntax-number: #986801;
+
+  /* App chrome */
+  --color-chrome-bg: #f7f7f8;
+  --color-chrome-text: #57606a;
+  --color-chrome-hover: #eaeef2;
+  --color-chrome-active: #dde4ec;
+  --color-popover-bg: #ffffff;
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
