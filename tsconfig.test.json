@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.json",
-  "include": ["tests/**/*", "vitest.config.ts", "playwright.config.ts"],
+  "include": ["tests/**/*", "src/preload/*.d.ts", "vitest.config.ts", "playwright.config.ts"],
   "compilerOptions": {
     "composite": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],

@@ -1,0 +1,3 @@
+# No trailing newline
+
+This file does not end with a newline.

@@ -1,8 +1,14 @@
 :root {
-  --font-text: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-text: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
   --color-bg: #ffffff;
   --color-text: #1f2328;
   --color-muted: #656d76;
+  --color-border: #d1d9e0;
+  --color-subtle-bg: #f6f8fa;
+  --color-link: #0969da;
+  --color-selection: #b6d6fd;
+  --color-status-bg: #f6f8fa;
   --page-width: 760px;
 }
 
@@ -13,7 +19,8 @@
 }
 
 html,
-body {
+body,
+#root {
   margin: 0;
   height: 100%;
   background: var(--color-bg);
@@ -23,13 +30,172 @@ body {
   line-height: 1.6;
 }
 
-.page {
-  max-width: var(--page-width);
-  margin: 0 auto;
-  padding: 48px 32px;
+::selection {
+  background: var(--color-selection);
 }
 
-.muted {
+/* ---------- App shell ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor-scroll {
+  flex: 1;
+  overflow-y: auto;
+  cursor: text;
+}
+
+.page {
+  max-width: var(--page-width);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 48px 32px 40vh;
+}
+
+.status-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-status-bg);
   color: var(--color-muted);
-  font-size: 0.875rem;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-note {
+  cursor: help;
+}
+
+/* ---------- Document ---------- */
+
+.milkdown .ProseMirror {
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.milkdown .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+
+.milkdown h1,
+.milkdown h2,
+.milkdown h3,
+.milkdown h4,
+.milkdown h5,
+.milkdown h6 {
+  margin: 1.4em 0 0.6em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.milkdown h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.milkdown h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.milkdown h3 {
+  font-size: 1.25em;
+}
+
+.milkdown h4 {
+  font-size: 1em;
+}
+
+.milkdown h5 {
+  font-size: 0.875em;
+}
+
+.milkdown h6 {
+  font-size: 0.85em;
+  color: var(--color-muted);
+}
+
+.milkdown p,
+.milkdown blockquote,
+.milkdown ul,
+.milkdown ol,
+.milkdown pre {
+  margin: 0 0 1em;
+}
+
+.milkdown ul,
+.milkdown ol {
+  padding-left: 2em;
+}
+
+.milkdown li > p {
+  margin: 0.25em 0;
+}
+
+.milkdown blockquote {
+  padding: 0 1em;
+  border-left: 4px solid var(--color-border);
+  color: var(--color-muted);
+}
+
+.milkdown a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.milkdown a:hover {
+  text-decoration: underline;
+}
+
+.milkdown code {
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: var(--color-subtle-bg);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.milkdown pre {
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--color-subtle-bg);
+  line-height: 1.45;
+}
+
+.milkdown pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.875em;
+}
+
+.milkdown hr {
+  height: 2px;
+  margin: 1.5em 0;
+  border: 0;
+  background: var(--color-border);
+}
+
+.milkdown img {
+  max-width: 100%;
+}
+
+.milkdown .ProseMirror-selectednode {
+  outline: 2px solid var(--color-link);
 }

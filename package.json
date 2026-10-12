@@ -22,7 +22,11 @@
     "test:e2e": "electron-vite build && playwright test"
   },
   "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "@milkdown/kit": "7.22.3",
+    "@milkdown/react": "7.22.3",
+    "node-diff3": "3.2.1",
+    "remark-stringify": "11.0.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
