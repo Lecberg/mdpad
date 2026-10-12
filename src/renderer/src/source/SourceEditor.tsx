@@ -13,6 +13,7 @@ import {
 import { useEffect, useRef } from 'react'
 import { setActiveSourceView } from '../editor/activeEditor'
 import { codeHighlighting } from '../editor/codeHighlight'
+import { centerCaret, viewModes } from '../editor/viewModes'
 import {
   activeHeadingIndex,
   countCharacters,
@@ -59,6 +60,18 @@ export function SourceEditor({ text, onTouched, onChange }: Props): React.JSX.El
           () => onChange(update.view.state.doc.toString()),
           SERIALIZE_DELAY_MS
         )
+      }
+      // Typewriter mode: keep the caret's line centered (not after mouse clicks).
+      if (
+        viewModes.typewriter &&
+        update.view.hasFocus &&
+        (update.docChanged || update.selectionSet) &&
+        !update.transactions.some((t) => t.isUserEvent('select.pointer'))
+      ) {
+        requestAnimationFrame(() => {
+          const coords = update.view.coordsAtPos(update.view.state.selection.main.head)
+          if (coords) centerCaret(coords.top, update.view.dom)
+        })
       }
       if (update.docChanged || update.selectionSet) {
         infoDocChanged ||= update.docChanged

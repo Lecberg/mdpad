@@ -17,6 +17,7 @@ import {
 import type { Settings } from '../shared/settings'
 import { services } from './appContext'
 import { MARKDOWN_FILTERS } from './fileFilters'
+import { exportDocument } from './exportService'
 import { createEntry, renameEntry, revealEntry, trashEntry } from './folderOps'
 import { MAIN_COMMANDS } from './mainCommands'
 import { refreshMenu } from './menu'
@@ -206,4 +207,15 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle(IpcChannel.recentGet, (): RecentList => services().recent.current)
+
+  ipcMain.handle(
+    IpcChannel.exportSave,
+    async (event, kind: unknown, html: unknown, defaultPath: unknown): Promise<FsResult> => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win || (kind !== 'html' && kind !== 'pdf') || !str(html) || !str(defaultPath)) {
+        return { ok: false, error: 'Invalid request.' }
+      }
+      return exportDocument(win, kind, html, defaultPath)
+    }
+  )
 }

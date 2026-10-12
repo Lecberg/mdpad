@@ -250,3 +250,31 @@ body,
 .source-editor .cm-focused .cm-selectionBackground {
   background: var(--color-selection) !important;
 }
+
+/* ---------- Writing modes ---------- */
+
+.status-message {
+  color: var(--color-link);
+}
+
+/* Focus mode (F8): everything but the block being edited fades back. */
+.focus-mode .ProseMirror > :not(.md-focus-path),
+.focus-mode .ProseMirror .md-focus-path > li:not(.md-focus-path),
+.focus-mode .ProseMirror blockquote.md-focus-path > :not(.md-focus-path),
+.focus-mode .source-editor .cm-line:not(.cm-activeLine) {
+  opacity: 0.32;
+  transition: opacity 0.15s;
+}
+
+.focus-mode .ProseMirror:not(.ProseMirror-focused) > *,
+.focus-mode .source-editor .cm-editor:not(.cm-focused) .cm-line {
+  opacity: 1;
+}
+
+/* Long documents: let the browser skip off-screen blocks. Not the block being edited, hovered
+   or focused, since containment would clip what they draw outside their box (the heading
+   marker in the margin, table handles, the code language menu). */
+.ProseMirror.md-large-doc > :not(.md-focus-path):not(:hover):not(:focus-within) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3em;
+}

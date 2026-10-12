@@ -35,6 +35,14 @@ function command(id: CommandId): MenuItemConstructorOptions {
   }
 }
 
+/** A command shown with a check mark that reflects a boolean setting. */
+function toggle(
+  id: CommandId,
+  setting: 'focusMode' | 'typewriterMode'
+): MenuItemConstructorOptions {
+  return { ...command(id), type: 'checkbox', checked: services().settings.current[setting] }
+}
+
 /** "&" marks a mnemonic in Windows menu labels; paths must show it literally. */
 const menuLabel = (text: string): string => text.replace(/&/g, '&&')
 
@@ -89,6 +97,11 @@ export function buildMenu(): Menu {
         { type: 'separator' },
         command('file.save'),
         command('file.saveAs'),
+        {
+          id: 'file.export',
+          label: 'Export',
+          submenu: [command('file.exportHtml'), command('file.exportPdf')]
+        },
         { type: 'separator' },
         command('file.closeFolder'),
         command('file.close'),
@@ -128,6 +141,7 @@ export function buildMenu(): Menu {
         command('paragraph.bulletList'),
         command('paragraph.codeBlock'),
         command('paragraph.table'),
+        command('paragraph.mathBlock'),
         { type: 'separator' },
         command('paragraph.horizontalRule')
       ]
@@ -139,6 +153,7 @@ export function buildMenu(): Menu {
         command('format.italic'),
         command('format.code'),
         command('format.strikethrough'),
+        command('format.highlight'),
         { type: 'separator' },
         command('format.link')
       ]
@@ -147,6 +162,8 @@ export function buildMenu(): Menu {
       label: '&View',
       submenu: [
         command('view.sourceMode'),
+        toggle('view.focusMode', 'focusMode'),
+        toggle('view.typewriterMode', 'typewriterMode'),
         { type: 'separator' },
         command('view.toggleSidebar'),
         command('view.outline'),

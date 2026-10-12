@@ -400,3 +400,111 @@
 .milkdown dl[data-type='footnote_definition'] dd > p {
   margin: 0;
 }
+
+/* ---------- Highlight ---------- */
+
+.milkdown mark.md-highlight {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: var(--color-highlight);
+  color: inherit;
+}
+
+/* ---------- Math ---------- */
+
+.milkdown .md-math-inline {
+  padding: 0 1px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.milkdown .md-math-inline:hover {
+  background: var(--color-chrome-hover);
+}
+
+.milkdown .md-math-inline.ProseMirror-selectednode {
+  outline: 2px solid var(--color-focus-ring);
+}
+
+/* Inline math while its source is being edited, with the rendered result floating below. */
+.milkdown .md-math-source {
+  color: var(--color-code-text);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.md-math-preview {
+  position: fixed;
+  z-index: 15;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-popover-bg);
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.katex {
+  font-size: 1.1em;
+}
+
+/* ---------- Rendered code blocks (display math, Mermaid) ---------- */
+
+/* Until the block is focused, only the rendered result shows. */
+.milkdown .milkdown-code-block:has(.preview-panel):not(:focus-within) {
+  border-color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.milkdown .milkdown-code-block:has(.preview-panel):not(:focus-within) .tools,
+.milkdown .milkdown-code-block:has(.preview-panel):not(:focus-within) .preview-divider,
+.milkdown .milkdown-code-block:has(.preview-panel):not(:focus-within) .preview-label {
+  display: none;
+}
+
+/* Clipped rather than display:none, so clicking the preview can still focus the source. */
+.milkdown .milkdown-code-block:has(.preview-panel):not(:focus-within) .codemirror-host {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.milkdown .milkdown-code-block .tools .tools-button-group .preview-toggle-button {
+  display: none;
+}
+
+.milkdown .milkdown-code-block .preview-divider {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--color-border);
+}
+
+.milkdown .milkdown-code-block .preview-label {
+  margin-bottom: 4px;
+  color: var(--color-faint);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.milkdown .milkdown-code-block .preview {
+  overflow-x: auto;
+  text-align: center;
+}
+
+.milkdown .milkdown-code-block .preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.md-preview-error {
+  color: var(--color-danger);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  text-align: left;
+  white-space: pre-wrap;
+}

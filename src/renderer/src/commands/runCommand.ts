@@ -20,9 +20,13 @@ import {
   toggleInlineCode,
   toggleItalic,
   toggleOrderedList,
+  insertMathBlock,
   toggleStrikethrough,
   toParagraph
 } from '../editor/formatting'
+import { toggleHighlight } from '../editor/plugins/highlight'
+import { updateSettings, settingsStore } from '../state/settingsStore'
+import { exportDocument } from './exportDocument'
 import { openLinkEditor } from '../editor/links'
 import { normalizeWith, serializeEditor } from '../editor/markdownCore'
 import { textToSave } from '../markdown/saveText'
@@ -41,11 +45,32 @@ export function flushEditor(): void {
   }
 }
 
+/** The last merge, reused when nothing changed (draft and autosave often ask in a row). */
+let lastSave: { original: string; baseline: string | null; current: string; text: string } | null =
+  null
+
 function fileTextFor(editor: Editor | null): string {
   const doc = documentStore.get()
   if (doc.mode === 'source') return doc.sourceText
   if (!editor || doc.current === null) return doc.original
-  return textToSave(doc, doc.current, (md) => normalizeWith(editor, md))
+  if (
+    lastSave &&
+    lastSave.original === doc.original &&
+    lastSave.baseline === doc.baseline &&
+    lastSave.current === doc.current
+  ) {
+    return lastSave.text
+  }
+  // Normalizing parses a whole document, so do it at most once per distinct text.
+  const normalized = new Map<string, string>()
+  const normalize = (md: string): string => {
+    let result = normalized.get(md)
+    if (result === undefined) normalized.set(md, (result = normalizeWith(editor, md)))
+    return result
+  }
+  const text = textToSave(doc, doc.current, normalize)
+  lastSave = { original: doc.original, baseline: doc.baseline, current: doc.current, text }
+  return text
 }
 
 /** The LF text saving would write right now (after reading the latest editor content). */
@@ -210,6 +235,8 @@ const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
   'file.closeFolder': forwardToMain,
   'file.close': forwardToMain,
   'file.quickOpen': () => (uiStore.set({ quickOpenOpen: !uiStore.get().quickOpenOpen }), true),
+  'file.exportHtml': () => (void exportDocument('html'), true),
+  'file.exportPdf': () => (void exportDocument('pdf'), true),
   'file.preferences': () => (uiStore.set({ settingsOpen: true, quickOpenOpen: false }), true),
   'file.save': (e) => (void saveDocument({ thenClose: e.thenClose }), true),
   'file.saveAs': (e) => (void saveDocument({ saveAs: true, thenClose: e.thenClose }), true),
@@ -229,13 +256,20 @@ const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
   'paragraph.bulletList': () => runVisual(toggleBulletList),
   'paragraph.codeBlock': () => runVisual(toggleCodeBlock),
   'paragraph.table': () => insertTable(),
+  'paragraph.mathBlock': () => runVisual(insertMathBlock),
   'paragraph.horizontalRule': () => runVisual(insertHorizontalRule),
   'format.bold': () => runVisual(toggleBold),
   'format.italic': () => runVisual(toggleItalic),
   'format.code': () => runVisual(toggleInlineCode),
   'format.strikethrough': () => runVisual(toggleStrikethrough),
+  'format.highlight': () => runVisual(toggleHighlight),
   'format.link': () => withVisualView((view) => openLinkEditor(view)),
   'view.sourceMode': () => (toggleSourceMode(), true),
+  'view.focusMode': () => (updateSettings({ focusMode: !settingsStore.get().focusMode }), true),
+  'view.typewriterMode': () => (
+    updateSettings({ typewriterMode: !settingsStore.get().typewriterMode }),
+    true
+  ),
   'view.toggleSidebar': () => (uiStore.set({ sidebarOpen: !uiStore.get().sidebarOpen }), true),
   'view.outline': () => (toggleSidebarTab('outline'), true),
   'view.files': () => (toggleSidebarTab('files'), true),

@@ -19,6 +19,8 @@ export const COMMANDS = {
   'file.quickOpen': { label: 'Quick Open…', accelerator: 'CmdOrCtrl+P' },
   'file.save': { label: 'Save', accelerator: 'CmdOrCtrl+S' },
   'file.saveAs': { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S' },
+  'file.exportHtml': { label: 'Export as HTML…' },
+  'file.exportPdf': { label: 'Export as PDF…' },
   'file.preferences': { label: 'Preferences…', accelerator: 'CmdOrCtrl+,' },
   'file.close': { label: 'Close', accelerator: 'CmdOrCtrl+W', main: true },
 
@@ -39,15 +41,19 @@ export const COMMANDS = {
   'paragraph.bulletList': { label: 'Unordered List', accelerator: 'CmdOrCtrl+Shift+]' },
   'paragraph.codeBlock': { label: 'Code Block', accelerator: 'CmdOrCtrl+Shift+K' },
   'paragraph.table': { label: 'Table', accelerator: 'CmdOrCtrl+T' },
+  'paragraph.mathBlock': { label: 'Math Block', accelerator: 'CmdOrCtrl+Shift+M' },
   'paragraph.horizontalRule': { label: 'Horizontal Line' },
 
   'format.bold': { label: 'Bold', accelerator: 'CmdOrCtrl+B' },
   'format.italic': { label: 'Italic', accelerator: 'CmdOrCtrl+I' },
   'format.code': { label: 'Inline Code', accelerator: 'CmdOrCtrl+Shift+`' },
   'format.strikethrough': { label: 'Strikethrough', accelerator: 'Alt+Shift+5' },
+  'format.highlight': { label: 'Highlight', accelerator: 'CmdOrCtrl+Shift+H' },
   'format.link': { label: 'Link', accelerator: 'CmdOrCtrl+K' },
 
   'view.sourceMode': { label: 'Source Code Mode', accelerator: 'CmdOrCtrl+/' },
+  'view.focusMode': { label: 'Focus Mode', accelerator: 'F8' },
+  'view.typewriterMode': { label: 'Typewriter Mode', accelerator: 'F9' },
   'view.toggleSidebar': { label: 'Toggle Sidebar', accelerator: 'CmdOrCtrl+Shift+L' },
   'view.outline': { label: 'Outline', accelerator: 'CmdOrCtrl+Shift+1' },
   'view.files': { label: 'Files', accelerator: 'CmdOrCtrl+Shift+3' },

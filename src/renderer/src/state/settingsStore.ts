@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
 import { setShortcutOverrides } from '../commands/keymap'
+import { viewModes } from '../editor/viewModes'
 import { createStore } from './createStore'
 
 // The app-wide preferences (owned by the main process) and applying them to this window.
@@ -22,6 +23,7 @@ function applyToDocument(settings: Settings): void {
     root.style.removeProperty('--font-text')
   }
   setShortcutOverrides(settings.shortcuts)
+  viewModes.typewriter = settings.typewriterMode
 }
 
 /** Apply the window's initial settings, and follow later changes and the system theme. */

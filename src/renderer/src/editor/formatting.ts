@@ -99,5 +99,25 @@ export const toggleItalic: Command = (state, dispatch) =>
 export const toggleInlineCode: Command = (state, dispatch) =>
   toggleMark(state.schema.marks.inlineCode)(state, dispatch)
 
+/**
+ * Turn the current empty paragraph into a display-math block, or add one after the current
+ * block, with the caret inside.
+ */
+export const insertMathBlock: Command = (state, dispatch) => {
+  const type = state.schema.nodes.code_block
+  const { $head } = state.selection
+  if (!type || $head.depth < 1) return false
+  const block = type.create({ language: 'math', math: true })
+  const emptyParagraph = $head.parent.type.name === 'paragraph' && $head.parent.content.size === 0
+  const from = emptyParagraph ? $head.before() : $head.after(1)
+  const to = emptyParagraph ? $head.after() : from
+  if (dispatch) {
+    const tr = state.tr.replaceWith(from, to, block)
+    tr.setSelection(TextSelection.create(tr.doc, from + 1))
+    dispatch(tr.scrollIntoView())
+  }
+  return true
+}
+
 export const toggleStrikethrough: Command = (state, dispatch) =>
   toggleMark(state.schema.marks.strike_through)(state, dispatch)

@@ -8,6 +8,9 @@ import type { Node } from '@milkdown/kit/prose/model'
 import { Decoration } from '@milkdown/kit/prose/view'
 import { codeHighlighting } from './codeHighlight'
 import { imageView } from './plugins/imageView'
+import { previewFocus } from './plugins/previewFocus'
+import { focusPath, largeDocument, typewriter } from './plugins/writingModes'
+import { renderPreview } from './previews'
 
 export interface InteractiveOptions {
   /**
@@ -49,7 +52,11 @@ export function addInteractiveViews(editor: Editor, options: InteractiveOptions)
         copyIcon: '',
         copyText: 'Copy',
         onCopy: (text) => void navigator.clipboard.writeText(text),
-        renderLanguage: (language) => language || 'plain text'
+        renderLanguage: (language) => language || 'plain text',
+        renderPreview,
+        previewLabel: 'Preview',
+        previewLoading: 'Rendering…',
+        previewToggleButton: () => ''
       }))
       ctx.update(tableBlockConfig.key, (prev) => ({
         ...prev,
@@ -78,5 +85,9 @@ export function addInteractiveViews(editor: Editor, options: InteractiveOptions)
     .use(codeBlockComponent)
     .use(tableBlock)
     .use(imageView)
+    .use(previewFocus)
+    .use(focusPath)
+    .use(typewriter)
+    .use(largeDocument)
     .use(upload)
 }

@@ -17,6 +17,10 @@ export interface Settings {
   lineWidth: number
   /** Save files that already have a name shortly after typing stops. */
   autosave: boolean
+  /** Dim everything except the block being edited (F8). */
+  focusMode: boolean
+  /** Keep the line being edited in the middle of the window (F9). */
+  typewriterMode: boolean
   shortcuts: ShortcutOverrides
 }
 
@@ -26,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fontSize: 16,
   lineWidth: 740,
   autosave: true,
+  focusMode: false,
+  typewriterMode: false,
   shortcuts: {}
 }
 
@@ -66,6 +72,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     fontSize: clampInt(value.fontSize, FONT_SIZE_RANGE, d.fontSize),
     lineWidth: clampInt(value.lineWidth, LINE_WIDTH_RANGE, d.lineWidth),
     autosave: typeof value.autosave === 'boolean' ? value.autosave : d.autosave,
+    focusMode: value.focusMode === true,
+    typewriterMode: value.typewriterMode === true,
     shortcuts: sanitizeShortcuts(value.shortcuts)
   }
 }

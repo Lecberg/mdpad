@@ -209,6 +209,16 @@ are now handled by the renderer keymap so they can be customised.
 5. **Focus mode** (F8: dim all but current block) and **typewriter mode** (F9: keep caret line centered).
 6. Performance pass with a ~1 MB fixture: measure open time, typing latency; debounce outline/word count.
 
+**As built (M5):** inline math follows Pandoc's rule (`$5 and $10` stays text) and a lone `$` is
+not escaped when saving; clicking a formula turns it into editable `$…$` source with a floating
+preview. Display math is a code block with language `math` (a fenced ```math block stays a
+fence). Footnotes already worked since M3; sub/superscript was not added. Export embeds the
+KaTeX fonts, highlights code with CodeMirror's parsers, and drops raw HTML from the Markdown.
+Focus and typewriter modes are settings (remembered, ticked in the View menu). Performance on
+the synthetic 1 MB note (`tests/e2e/largeDoc.ts`): open 7.0 s → 5.2 s; typing went from a 120+ ms
+block on every keystroke to none, by removing Milkdown's heading-id plugin, debouncing
+outline/word count, caching serializations and merges, and `content-visibility` for long notes.
+
 ---
 
 ## Testing strategy

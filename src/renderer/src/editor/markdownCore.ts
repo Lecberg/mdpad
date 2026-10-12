@@ -13,7 +13,11 @@ import { cursor } from '@milkdown/kit/plugin/cursor'
 import { history } from '@milkdown/kit/plugin/history'
 import { indent } from '@milkdown/kit/plugin/indent'
 import { trailing } from '@milkdown/kit/plugin/trailing'
-import { commonmark, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
+import {
+  commonmark,
+  remarkPreserveEmptyLinePlugin,
+  syncHeadingIdPlugin
+} from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
 import type { Node } from '@milkdown/kit/prose/model'
 import { Plugin } from '@milkdown/kit/prose/state'
@@ -25,17 +29,22 @@ import { addInteractiveViews, type InteractiveOptions } from './interactive'
 import { findPlugins } from './find'
 import { docInfo } from './plugins/docInfo'
 import { frontmatter } from './plugins/frontmatter'
+import { highlight } from './plugins/highlight'
 import { linkClick } from './plugins/linkClick'
+import { math } from './plugins/math'
 import { syntaxReveal } from './plugins/syntaxReveal'
 import { taskToggle } from './plugins/taskToggle'
 
 // The editor configuration shared by the app and the headless round-trip tests, so the
 // tests exercise exactly what the app saves.
 
-// Milkdown writes empty paragraphs as `<br />` to preserve blank lines. Typora (and plain
-// Markdown) simply drop them, so leave that plugin out.
-const emptyLinePlugins: MilkdownPlugin[] = [...remarkPreserveEmptyLinePlugin]
-const commonmarkPlugins = commonmark.filter((plugin) => !emptyLinePlugins.includes(plugin))
+// Left out of the commonmark preset:
+// - Milkdown writes empty paragraphs as `<br />` to preserve blank lines. Typora (and plain
+//   Markdown) simply drop them.
+// - Heading ids: recomputed for the whole document on every change (slow for long notes)
+//   and unused; `#anchor` links are resolved from the outline instead.
+const excludedPlugins: MilkdownPlugin[] = [...remarkPreserveEmptyLinePlugin, syncHeadingIdPlugin]
+const commonmarkPlugins = commonmark.filter((plugin) => !excludedPlugins.includes(plugin))
 
 /**
  * Empty paragraphs (e.g. from pressing Enter twice) are dropped when saving, as in Typora;
@@ -65,12 +74,24 @@ export function withoutEmptyParagraphs(doc: Node): Node {
   return tr.doc
 }
 
+/** Serializations of recent documents (ProseMirror documents are immutable). */
+const serialized = new WeakMap<Node, string>()
+
 function serializeDoc(ctx: Ctx, doc: Node): string {
-  return ctx.get(serializerCtx)(withoutEmptyParagraphs(doc))
+  let markdown = serialized.get(doc)
+  if (markdown === undefined) {
+    markdown = ctx.get(serializerCtx)(withoutEmptyParagraphs(doc))
+    serialized.set(doc, markdown)
+  }
+  return markdown
 }
 
-/** Serializing is too costly for every keystroke; wait for a pause in typing. */
-const SERIALIZE_DELAY_MS = 150
+/**
+ * Serializing is too costly for every keystroke; wait for a pause in typing. Long documents
+ * wait longer, since serializing them takes a noticeable moment. (Saving always serializes
+ * the latest content first, so this only delays the dirty indicator's fine print.)
+ */
+const serializeDelay = (doc: Node): number => Math.min(1500, 150 + doc.content.size / 1000)
 
 export interface MarkdownEditorOptions {
   root: HTMLElement
@@ -102,7 +123,7 @@ function changeTracker(
               clearTimeout(timer)
               timer = setTimeout(
                 () => onChange?.(serializeDoc(ctx, view.state.doc)),
-                SERIALIZE_DELAY_MS
+                serializeDelay(view.state.doc)
               )
             },
             destroy: () => clearTimeout(timer)
@@ -132,6 +153,8 @@ export function createMarkdownEditor({
     .use(commonmarkPlugins)
     .use(gfm)
     .use(frontmatter)
+    .use(math)
+    .use(highlight)
     .use(history)
     .use(clipboard)
     .use(indent)

@@ -52,6 +52,7 @@
   --color-table-stripe: #fbfbfb;
   --color-search-match: rgba(255, 213, 79, 0.45);
   --color-search-active: rgba(255, 152, 0, 0.6);
+  --color-highlight: #fff1a8;
   --color-syntax-marker: #a7adb3;
   --color-syntax-keyword: #a626a4;
   --color-syntax-string: #50a14f;
@@ -98,6 +99,7 @@
   --color-table-stripe: #23262a;
   --color-search-match: rgba(229, 184, 52, 0.35);
   --color-search-active: rgba(255, 152, 0, 0.55);
+  --color-highlight: rgba(229, 184, 52, 0.32);
   --color-syntax-marker: #6c727a;
   --color-syntax-keyword: #c678dd;
   --color-syntax-string: #98c379;

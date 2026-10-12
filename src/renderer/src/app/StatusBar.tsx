@@ -1,5 +1,6 @@
 import { useDocInfo } from '../state/docInfoStore'
 import type { DocState } from '../state/documentStore'
+import { useUi } from '../state/uiStore'
 
 function saveState(doc: DocState): string {
   if (doc.saving) return 'Saving…'
@@ -14,6 +15,7 @@ const plural = (n: number, word: string): string =>
 
 export function StatusBar({ doc }: { doc: DocState }): React.JSX.Element {
   const { words, characters } = useDocInfo()
+  const { statusMessage } = useUi()
   return (
     <footer className="status-bar" data-testid="status-bar">
       <span className="status-path" title={doc.path ?? undefined}>
@@ -26,6 +28,11 @@ export function StatusBar({ doc }: { doc: DocState }): React.JSX.Element {
           title="Some syntax in this file is written differently by the editor (for example setext headings or * bullets). Untouched lines are kept as-is; only blocks you edit are rewritten."
         >
           Edited blocks may be reformatted
+        </span>
+      )}
+      {statusMessage && (
+        <span className="status-message" data-testid="status-message" role="status">
+          {statusMessage}
         </span>
       )}
       {doc.mode === 'source' && (

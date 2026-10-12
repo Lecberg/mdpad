@@ -128,7 +128,8 @@ export const IpcChannel = {
   entryRename: 'entry:rename',
   entryTrash: 'entry:trash',
   entryReveal: 'entry:reveal',
-  recentGet: 'recent:get'
+  recentGet: 'recent:get',
+  exportSave: 'export:save'
 } as const
 
 export interface MdpadApi {
@@ -178,4 +179,6 @@ export interface MdpadApi {
   trashEntry(path: string): Promise<FsResult>
   revealInExplorer(path: string): void
   getRecent(): Promise<RecentList>
+  /** Ask where to save, then write `html` as an HTML file or print it to PDF. */
+  exportDocument(kind: 'html' | 'pdf', html: string, defaultPath: string): Promise<FsResult>
 }

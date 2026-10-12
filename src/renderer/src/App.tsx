@@ -19,6 +19,7 @@ import type { LoadedFile } from '../../shared/ipc-types'
 import { documentStore, useDocument } from './state/documentStore'
 import { startFolderSync } from './state/folderStore'
 import { noticeStore } from './state/noticeStore'
+import { useSettings } from './state/settingsStore'
 import { uiStore, useUi } from './state/uiStore'
 
 // Requested once per window (not per effect run) so StrictMode's double effects can't
@@ -59,6 +60,7 @@ function focusEditorEnd(event: React.MouseEvent): void {
 function App(): React.JSX.Element {
   const doc = useDocument()
   const ui = useUi()
+  const { focusMode, typewriterMode } = useSettings()
 
   useEffect(() => {
     let cancelled = false
@@ -109,7 +111,11 @@ function App(): React.JSX.Element {
   }, [doc.loadId, editorReady])
 
   return (
-    <div className="app">
+    <div
+      className={['app', focusMode && 'focus-mode', typewriterMode && 'typewriter-mode']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="workspace">
         {ui.sidebarOpen && <Sidebar />}
         <main className="editor-column">

@@ -23,6 +23,8 @@ export interface UiState {
   /** Scroll position (0–1) to restore after switching between visual and source mode. */
   pendingScrollRatio: number | null
   pendingReveal: Reveal | null
+  /** A short message in the status bar (e.g. "Exported to notes.pdf"). */
+  statusMessage: string | null
 }
 
 export const uiStore = createStore<UiState>({
@@ -32,10 +34,20 @@ export const uiStore = createStore<UiState>({
   quickOpenOpen: false,
   settingsOpen: false,
   pendingScrollRatio: null,
-  pendingReveal: null
+  pendingReveal: null,
+  statusMessage: null
 })
 
 export const useUi = (): UiState => uiStore.use()
+
+let messageTimer: ReturnType<typeof setTimeout> | undefined
+
+/** Show `message` in the status bar for a while (null clears it). */
+export function showStatusMessage(message: string | null, durationMs = 6000): void {
+  clearTimeout(messageTimer)
+  uiStore.set({ statusMessage: message })
+  if (message) messageTimer = setTimeout(() => uiStore.set({ statusMessage: null }), durationMs)
+}
 
 /** Show a sidebar tab; asking for the tab that is already showing hides the sidebar. */
 export function toggleSidebarTab(tab: SidebarTab): void {
