@@ -14,14 +14,20 @@ import { history } from '@milkdown/kit/plugin/history'
 import { indent } from '@milkdown/kit/plugin/indent'
 import { trailing } from '@milkdown/kit/plugin/trailing'
 import { commonmark, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
+import { gfm } from '@milkdown/kit/preset/gfm'
 import type { Node } from '@milkdown/kit/prose/model'
 import { Plugin } from '@milkdown/kit/prose/state'
 import { Transform } from '@milkdown/kit/prose/transform'
 import { $prose } from '@milkdown/kit/utils'
+import { linkHandler } from '../markdown/linkHandler'
 import { STRINGIFY_OPTIONS } from '../markdown/stringifyOptions'
+import { addInteractiveViews, type InteractiveOptions } from './interactive'
+import { findPlugins } from './find'
 import { docInfo } from './plugins/docInfo'
+import { frontmatter } from './plugins/frontmatter'
 import { linkClick } from './plugins/linkClick'
 import { syntaxReveal } from './plugins/syntaxReveal'
+import { taskToggle } from './plugins/taskToggle'
 
 // The editor configuration shared by the app and the headless round-trip tests, so the
 // tests exercise exactly what the app saves.
@@ -73,6 +79,11 @@ export interface MarkdownEditorOptions {
   onTouched?: () => void
   /** Called after a pause in changes with the serialized Markdown. */
   onChange?: (markdown: string) => void
+  /**
+   * Interactive node views (code block editor, table controls, images, paste upload).
+   * Left out in headless tests; they only affect display, never serialization.
+   */
+  interactive?: InteractiveOptions
 }
 
 function changeTracker(
@@ -105,15 +116,22 @@ export function createMarkdownEditor({
   root,
   markdown,
   onTouched,
-  onChange
+  onChange,
+  interactive
 }: MarkdownEditorOptions): Editor {
-  return Editor.make()
+  const editor = Editor.make()
     .config((ctx) => {
       ctx.set(rootCtx, root)
       ctx.set(defaultValueCtx, markdown)
-      ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, ...STRINGIFY_OPTIONS }))
+      ctx.update(remarkStringifyOptionsCtx, (prev) => ({
+        ...prev,
+        ...STRINGIFY_OPTIONS,
+        handlers: { ...prev.handlers, link: linkHandler }
+      }))
     })
     .use(commonmarkPlugins)
+    .use(gfm)
+    .use(frontmatter)
     .use(history)
     .use(clipboard)
     .use(indent)
@@ -123,6 +141,9 @@ export function createMarkdownEditor({
     .use(syntaxReveal)
     .use(linkClick)
     .use(docInfo)
+    .use(findPlugins)
+    .use(taskToggle)
+  return interactive ? addInteractiveViews(editor, interactive) : editor
 }
 
 /** Current document as Markdown. */

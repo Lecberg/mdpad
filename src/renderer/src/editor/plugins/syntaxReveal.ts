@@ -11,7 +11,7 @@ import { markRangeAt } from '../markRange'
 
 export const syntaxRevealKey = new PluginKey<DecorationSet>('syntax-reveal')
 
-const REVEALED_MARKS = ['strong', 'emphasis', 'inlineCode', 'link']
+const REVEALED_MARKS = ['strong', 'emphasis', 'inlineCode', 'strike_through', 'link']
 
 function marker(text: string, className: string, onMouseDown?: (view: EditorView) => void) {
   return (view: EditorView): HTMLElement => {
@@ -40,6 +40,8 @@ function delimiters(mark: Mark): [open: string, close: string] {
     }
     case 'inlineCode':
       return ['`', '`']
+    case 'strike_through':
+      return ['~~', '~~']
     default: {
       const title = mark.attrs.title ? ` "${mark.attrs.title}"` : ''
       return ['[', `](${mark.attrs.href}${title})`]

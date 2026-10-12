@@ -1,20 +1,35 @@
 import { useEffect } from 'react'
 import { editorViewCtx } from '@milkdown/kit/core'
 import { TextSelection } from '@milkdown/kit/prose/state'
+import { FindBar } from './app/FindBar'
 import { LinkPopover } from './app/LinkPopover'
+import { NoticeBanner } from './app/NoticeBanner'
 import { Sidebar } from './app/Sidebar'
 import { StatusBar } from './app/StatusBar'
+import { saveImages } from './commands/images'
 import { installKeymap } from './commands/installKeymap'
 import { runCommand } from './commands/runCommand'
 import { getActiveEditor, getActiveSourceView } from './editor/activeEditor'
 import { MilkdownEditor } from './editor/MilkdownEditor'
 import { SourceEditor } from './source/SourceEditor'
+import type { LoadedFile } from '../../shared/ipc-types'
 import { documentStore, useDocument } from './state/documentStore'
+import { noticeStore } from './state/noticeStore'
 import { uiStore, useUi } from './state/uiStore'
 
 // Requested once per window (not per effect run) so StrictMode's double effects can't
-// consume the initial file twice.
-const initialFile = window.api.windowReady()
+// consume the initial document twice.
+const initialDoc = window.api.windowReady()
+
+const interactive = { saveImages }
+
+/** Another program changed the open file. */
+function onFileChanged(file: LoadedFile): void {
+  const doc = documentStore.get()
+  if (file.text === doc.diskText) return // our own save, or no real change
+  if (doc.dirty || doc.changePending) noticeStore.show({ kind: 'externalChange', file })
+  else documentStore.load(file)
+}
 
 function fileName(path: string | null): string {
   return path ? path.split(/[\\/]/).pop()! : 'Untitled'
@@ -43,15 +58,22 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     let cancelled = false
-    void initialFile.then((file) => {
-      if (file && !cancelled && documentStore.get().path === null) documentStore.load(file)
+    void initialDoc.then((initial) => {
+      if (cancelled || documentStore.get().loadId !== 0) return
+      if (!initial.file && initial.recoveredText === null) return
+      documentStore.loadInitial(initial)
+      if (initial.recoveredText !== null) {
+        noticeStore.show({ kind: 'recovered', diskFile: initial.file })
+      }
     })
     const offLoad = window.api.onLoadFile((file) => documentStore.load(file))
+    const offChanged = window.api.onFileChanged(onFileChanged)
     const offCommand = window.api.onMenuCommand((event) => void runCommand(event))
     const offKeymap = installKeymap()
     return () => {
       cancelled = true
       offLoad()
+      offChanged()
       offCommand()
       offKeymap()
     }
@@ -78,27 +100,32 @@ function App(): React.JSX.Element {
     <div className="app">
       <div className="workspace">
         {ui.sidebarOpen && <Sidebar />}
-        <main className="editor-scroll" onMouseDown={focusEditorEnd}>
-          <div
-            className={doc.mode === 'source' ? 'page page-source' : 'page'}
-            onMouseDown={focusEditorEnd}
-          >
-            {doc.mode === 'source' ? (
-              <SourceEditor
-                key={doc.loadId}
-                text={doc.sourceText}
-                onTouched={documentStore.touched}
-                onChange={documentStore.sourceChanged}
-              />
-            ) : (
-              <MilkdownEditor
-                key={doc.loadId}
-                markdown={doc.original}
-                onReady={documentStore.editorReady}
-                onTouched={documentStore.touched}
-                onChange={documentStore.editorChanged}
-              />
-            )}
+        <main className="editor-column">
+          <NoticeBanner />
+          <FindBar />
+          <div className="editor-scroll" onMouseDown={focusEditorEnd}>
+            <div
+              className={doc.mode === 'source' ? 'page page-source' : 'page'}
+              onMouseDown={focusEditorEnd}
+            >
+              {doc.mode === 'source' ? (
+                <SourceEditor
+                  key={doc.loadId}
+                  text={doc.sourceText}
+                  onTouched={documentStore.touched}
+                  onChange={documentStore.sourceChanged}
+                />
+              ) : (
+                <MilkdownEditor
+                  key={doc.loadId}
+                  markdown={doc.original}
+                  onReady={documentStore.editorReady}
+                  onTouched={documentStore.touched}
+                  onChange={documentStore.editorChanged}
+                  interactive={interactive}
+                />
+              )}
+            </div>
           </div>
         </main>
       </div>

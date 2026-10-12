@@ -83,7 +83,10 @@ export function buildMenu(): Menu {
         { role: 'paste' },
         { role: 'pasteAndMatchStyle', label: 'Paste as Plain Text' },
         { type: 'separator' },
-        { role: 'selectAll' }
+        { role: 'selectAll' },
+        { type: 'separator' },
+        forward('edit.find'),
+        forward('edit.replace')
       ]
     },
     {
@@ -97,6 +100,7 @@ export function buildMenu(): Menu {
         forward('paragraph.orderedList'),
         forward('paragraph.bulletList'),
         forward('paragraph.codeBlock'),
+        forward('paragraph.table'),
         { type: 'separator' },
         forward('paragraph.horizontalRule')
       ]
@@ -107,6 +111,7 @@ export function buildMenu(): Menu {
         forward('format.bold'),
         forward('format.italic'),
         forward('format.code'),
+        forward('format.strikethrough'),
         { type: 'separator' },
         forward('format.link')
       ]

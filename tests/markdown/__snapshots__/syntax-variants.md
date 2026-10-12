@@ -15,7 +15,7 @@ continues after a hard break.
 Line with a backslash\
 hard break.
 
-A [reference link](https://example.com/reference "Reference") and an autolink <https://example.com>.
+A [reference link](https://example.com/reference "Reference") and an autolink https://example.com.
 
 <div align="center">
   <b>Raw HTML block</b>

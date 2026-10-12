@@ -1,10 +1,15 @@
 import { redo as sourceRedo, undo as sourceUndo } from '@codemirror/commands'
+import { openSearchPanel } from '@codemirror/search'
 import { editorViewCtx, type Editor } from '@milkdown/kit/core'
+import { insertTableCommand } from '@milkdown/kit/preset/gfm'
 import { redo, undo } from '@milkdown/kit/prose/history'
-import type { Command } from '@milkdown/kit/prose/state'
+import { TextSelection, type Command } from '@milkdown/kit/prose/state'
+import type { EditorView } from '@milkdown/kit/prose/view'
+import { callCommand } from '@milkdown/kit/utils'
 import type { CommandId } from '../../../shared/commands'
 import type { MenuCommandEvent } from '../../../shared/ipc-types'
 import { getActiveEditor, getActiveSourceView } from '../editor/activeEditor'
+import { closeFind, openFind } from '../editor/find'
 import {
   insertHorizontalRule,
   toggleBlockquote,
@@ -15,6 +20,7 @@ import {
   toggleInlineCode,
   toggleItalic,
   toggleOrderedList,
+  toggleStrikethrough,
   toParagraph
 } from '../editor/formatting'
 import { openLinkEditor } from '../editor/links'
@@ -35,16 +41,31 @@ function flushEditor(): void {
   }
 }
 
-/** The LF text saving would write right now. */
-function currentFileText(editor: Editor | null): string {
+function fileTextFor(editor: Editor | null): string {
   const doc = documentStore.get()
   if (doc.mode === 'source') return doc.sourceText
   if (!editor || doc.current === null) return doc.original
   return textToSave(doc, doc.current, (md) => normalizeWith(editor, md))
 }
 
-async function save(saveAs: boolean, thenClose: boolean): Promise<void> {
-  if (documentStore.get().saving) return
+/** The LF text saving would write right now (after reading the latest editor content). */
+export function currentFileText(): string {
+  flushEditor()
+  return fileTextFor(getActiveEditor())
+}
+
+export interface SaveOptions {
+  saveAs?: boolean
+  /** Close the window after a successful save (the close prompt's "Save"). */
+  thenClose?: boolean
+  /** Autosave: report failures only in the status bar, not with a dialog. */
+  silent?: boolean
+}
+
+/** Save the document. Resolves to true if it is saved afterwards. */
+export async function saveDocument(options: SaveOptions = {}): Promise<boolean> {
+  const { saveAs = false, thenClose = false, silent = false } = options
+  if (documentStore.get().saving) return false
   // Read now rather than trusting the debounced state, which may lag the last keystroke.
   flushEditor()
   const doc = documentStore.get()
@@ -52,27 +73,30 @@ async function save(saveAs: boolean, thenClose: boolean): Promise<void> {
   // An unedited file that already exists on disk is never rewritten.
   if (!saveAs && doc.path && !doc.dirty) {
     if (thenClose) window.api.closeWindow()
-    return
+    return true
   }
 
   let path = doc.path
   if (saveAs || !path) {
     path = await window.api.showSaveAsDialog(doc.path)
-    if (!path) return
+    if (!path) return false
   }
 
-  const text = currentFileText(getActiveEditor())
-  const savedMarkdown = doc.mode === 'wysiwyg' ? doc.current : null
+  flushEditor() // the dialog may have been open a while
+  const latest = documentStore.get()
+  const text = fileTextFor(getActiveEditor())
+  const savedMarkdown = latest.mode === 'wysiwyg' ? latest.current : null
 
   documentStore.saveStarted()
-  const result = await window.api.saveFile(path, text, doc.format)
+  const result = await window.api.saveFile(path, text, latest.format)
   if (!result.ok) {
     documentStore.saveFailed(result.error)
-    window.alert(`Could not save the file.\n\n${result.error}`)
-    return
+    if (!silent) window.alert(`Could not save the file.\n\n${result.error}`)
+    return false
   }
   documentStore.saveSucceeded(path, text, savedMarkdown)
   if (thenClose) window.api.closeWindow()
+  return true
 }
 
 const editorScroller = (): HTMLElement | null => document.querySelector('.editor-scroll')
@@ -83,11 +107,12 @@ function toggleSourceMode(): void {
     const max = scroller.scrollHeight - scroller.clientHeight
     uiStore.set({ pendingScrollRatio: max > 0 ? scroller.scrollTop / max : 0 })
   }
+  closeFind()
   flushEditor()
   if (documentStore.get().mode === 'source') {
     documentStore.exitSource()
   } else {
-    documentStore.enterSource(currentFileText(getActiveEditor()))
+    documentStore.enterSource(fileTextFor(getActiveEditor()))
   }
 }
 
@@ -114,17 +139,60 @@ function runHistory(kind: 'undo' | 'redo'): boolean {
   return runVisual(kind === 'undo' ? undo : redo)
 }
 
-function openLink(): boolean {
+function withVisualView(fn: (view: EditorView) => void): boolean {
   const editor = getActiveEditor()
   if (!editor || documentStore.get().mode !== 'wysiwyg') return false
-  return editor.action((ctx) => openLinkEditor(ctx.get(editorViewCtx)))
+  editor.action((ctx) => fn(ctx.get(editorViewCtx)))
+  return true
+}
+
+function find(withReplace: boolean): boolean {
+  if (documentStore.get().mode === 'source') {
+    const view = getActiveSourceView()
+    return view ? openSearchPanel(view) || true : false
+  }
+  return withVisualView((view) => openFind(view, withReplace))
+}
+
+function insertTable(): boolean {
+  const editor = getActiveEditor()
+  if (!editor || documentStore.get().mode !== 'wysiwyg') return false
+  editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const before = view.state.selection.from
+    callCommand(insertTableCommand.key, { row: 3, col: 3 })(ctx)
+    // Put the caret in the new table's first cell, as Typora does.
+    let tablePos = -1
+    view.state.doc.descendants((node, pos) => {
+      if (tablePos >= 0) return false
+      if (node.type.name === 'table' && pos + node.nodeSize > before) tablePos = pos
+      return tablePos < 0
+    })
+    if (tablePos >= 0) {
+      const { doc, tr } = view.state
+      // Milkdown defaults new cells to left alignment, which writes ":---"; a plain new
+      // table (like Typora's) has no alignment markers.
+      doc.nodeAt(tablePos)!.descendants((cell, offset) => {
+        if (cell.attrs.alignment !== undefined) {
+          tr.setNodeMarkup(tablePos + 1 + offset, undefined, { ...cell.attrs, alignment: null })
+        }
+        return cell.type.name.endsWith('_row') // table_header_row, table_row
+      })
+      tr.setSelection(TextSelection.near(tr.doc.resolve(tablePos + 1)))
+      view.dispatch(tr.scrollIntoView())
+    }
+    view.focus()
+  })
+  return true
 }
 
 const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
-  'file.save': (e) => (void save(false, e.thenClose ?? false), true),
-  'file.saveAs': (e) => (void save(true, e.thenClose ?? false), true),
+  'file.save': (e) => (void saveDocument({ thenClose: e.thenClose }), true),
+  'file.saveAs': (e) => (void saveDocument({ saveAs: true, thenClose: e.thenClose }), true),
   'edit.undo': () => runHistory('undo'),
   'edit.redo': () => runHistory('redo'),
+  'edit.find': () => find(false),
+  'edit.replace': () => find(true),
   'paragraph.heading1': () => runVisual(toggleHeading(1)),
   'paragraph.heading2': () => runVisual(toggleHeading(2)),
   'paragraph.heading3': () => runVisual(toggleHeading(3)),
@@ -136,11 +204,13 @@ const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
   'paragraph.orderedList': () => runVisual(toggleOrderedList),
   'paragraph.bulletList': () => runVisual(toggleBulletList),
   'paragraph.codeBlock': () => runVisual(toggleCodeBlock),
+  'paragraph.table': () => insertTable(),
   'paragraph.horizontalRule': () => runVisual(insertHorizontalRule),
   'format.bold': () => runVisual(toggleBold),
   'format.italic': () => runVisual(toggleItalic),
   'format.code': () => runVisual(toggleInlineCode),
-  'format.link': () => openLink(),
+  'format.strikethrough': () => runVisual(toggleStrikethrough),
+  'format.link': () => withVisualView((view) => openLinkEditor(view)),
   'view.sourceMode': () => (toggleSourceMode(), true),
   'view.outline': () => (uiStore.set({ sidebarOpen: !uiStore.get().sidebarOpen }), true)
 }

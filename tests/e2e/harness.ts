@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process'
 import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -25,11 +26,31 @@ export class Mdpad {
     return this.launched.page
   }
 
+  /** Profile folder for this test, so tests never touch the real app's data or instance. */
+  readonly userData = join(this.dir, 'user-data')
+
   async launch(...files: string[]): Promise<void> {
-    const app = await electron.launch({ args: ['.', ...files] })
+    const app = await electron.launch({
+      args: ['.', ...files],
+      env: { ...process.env, MDPAD_USER_DATA: this.userData }
+    })
     const page = await app.firstWindow()
     await page.locator('.ProseMirror').waitFor()
     this.launched = { app, page }
+  }
+
+  /**
+   * Simulate a crash: kill the whole app process tree (main, renderer, GPU) without any of
+   * its normal shutdown. Killing only the main process leaves children holding the
+   * single-instance lock.
+   */
+  async crash(): Promise<void> {
+    const { app } = this.launched!
+    this.launched = null
+    const exited = new Promise((resolve) => app.process().once('exit', resolve))
+    execFileSync('taskkill', ['/PID', String(app.process().pid), '/T', '/F'], { stdio: 'ignore' })
+    await exited
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
 
   /** Copy a file from tests/fixtures into the scratch folder; returns its path. */
@@ -56,7 +77,7 @@ export class Mdpad {
    */
   async selectText(text: string, collapse?: 'start' | 'end'): Promise<void> {
     await this.page.evaluate(
-      ([needle, edge]) => {
+      async ([needle, edge]) => {
         const root = document.querySelector('.ProseMirror')!
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -66,17 +87,24 @@ export class Mdpad {
           const range = document.createRange()
           range.setStart(node, edge === 'end' ? index + needle.length : index)
           range.setEnd(node, edge === 'start' ? index : index + needle.length)
+          // ProseMirror reads the DOM selection in its own (earlier-registered)
+          // selectionchange listener; wait for that event so keys typed next can't
+          // overtake it.
+          const applied = new Promise((resolve) =>
+            document.addEventListener('selectionchange', () => setTimeout(resolve, 0), {
+              once: true
+            })
+          )
           const selection = window.getSelection()!
           selection.removeAllRanges()
           selection.addRange(range)
+          await applied
           return
         }
         throw new Error(`text not found: ${needle}`)
       },
       [text, collapse] as const
     )
-    // ProseMirror picks up DOM selection changes asynchronously.
-    await this.page.waitForTimeout(50)
   }
 
   /** Click a native menu item by id, as a user would with the mouse. */

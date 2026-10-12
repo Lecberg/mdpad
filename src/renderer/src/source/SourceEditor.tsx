@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { languages } from '@codemirror/language-data'
+import { search, searchKeymap } from '@codemirror/search'
 import { EditorState } from '@codemirror/state'
 import {
   EditorView,
@@ -10,9 +10,9 @@ import {
   keymap,
   type ViewUpdate
 } from '@codemirror/view'
-import { tags } from '@lezer/highlight'
 import { useEffect, useRef } from 'react'
 import { setActiveSourceView } from '../editor/activeEditor'
+import { codeHighlighting } from '../editor/codeHighlight'
 import {
   activeHeadingIndex,
   countCharacters,
@@ -22,24 +22,6 @@ import {
 } from '../state/docInfoStore'
 
 const SERIALIZE_DELAY_MS = 150
-
-const markdownHighlight = HighlightStyle.define([
-  { tag: tags.heading, fontWeight: '600', color: 'var(--color-text)' },
-  { tag: tags.strong, fontWeight: '600' },
-  { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.link, tags.url], color: 'var(--color-link)' },
-  { tag: tags.monospace, color: 'var(--color-code-text)' },
-  {
-    tag: [tags.processingInstruction, tags.meta, tags.contentSeparator],
-    color: 'var(--color-muted)'
-  },
-  { tag: tags.quote, color: 'var(--color-muted)' },
-  { tag: tags.keyword, color: 'var(--color-syntax-keyword)' },
-  { tag: [tags.string, tags.special(tags.string)], color: 'var(--color-syntax-string)' },
-  { tag: tags.comment, color: 'var(--color-muted)', fontStyle: 'italic' },
-  { tag: [tags.number, tags.bool, tags.atom], color: 'var(--color-syntax-number)' }
-])
 
 function publishDocInfo(state: EditorState, docChanged: boolean): void {
   if (docChanged) {
@@ -98,8 +80,9 @@ export function SourceEditor({ text, onTouched, onChange }: Props): React.JSX.El
           highlightActiveLine(),
           EditorView.lineWrapping,
           markdown({ base: markdownLanguage, codeLanguages: languages }),
-          syntaxHighlighting(markdownHighlight),
-          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+          codeHighlighting,
+          search({ top: true }),
+          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
           EditorView.contentAttributes.of({ spellcheck: 'false', 'aria-label': 'Markdown source' }),
           EditorView.updateListener.of(onUpdate)
         ]

@@ -1,6 +1,7 @@
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react'
 import { useEffect } from 'react'
 import { setActiveEditor } from './activeEditor'
+import type { InteractiveOptions } from './interactive'
 import { createMarkdownEditor, serializeEditor } from './markdownCore'
 
 interface Props {
@@ -9,11 +10,18 @@ interface Props {
   onReady: (markdown: string) => void
   onTouched: () => void
   onChange: (markdown: string) => void
+  interactive: InteractiveOptions
 }
 
-function EditorInner({ markdown, onReady, onTouched, onChange }: Props): React.JSX.Element {
+function EditorInner({
+  markdown,
+  onReady,
+  onTouched,
+  onChange,
+  interactive
+}: Props): React.JSX.Element {
   const { loading, get } = useEditor((root) =>
-    createMarkdownEditor({ root, markdown, onTouched, onChange })
+    createMarkdownEditor({ root, markdown, onTouched, onChange, interactive })
   )
 
   useEffect(() => {

@@ -45,6 +45,9 @@
   --color-syntax-keyword: #a626a4;
   --color-syntax-string: #50a14f;
   --color-syntax-number: #986801;
+  --color-syntax-function: #4078f2;
+  --color-syntax-type: #c18401;
+  --color-syntax-invalid: #e45649;
 
   /* App chrome */
   --color-chrome-bg: #f7f7f8;

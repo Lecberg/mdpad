@@ -14,6 +14,8 @@ export const COMMANDS = {
 
   'edit.undo': { label: 'Undo', accelerator: 'CmdOrCtrl+Z' },
   'edit.redo': { label: 'Redo', accelerator: 'CmdOrCtrl+Y' },
+  'edit.find': { label: 'Find…', accelerator: 'CmdOrCtrl+F' },
+  'edit.replace': { label: 'Replace…', accelerator: 'CmdOrCtrl+H' },
 
   'paragraph.heading1': { label: 'Heading 1', accelerator: 'CmdOrCtrl+1' },
   'paragraph.heading2': { label: 'Heading 2', accelerator: 'CmdOrCtrl+2' },
@@ -26,11 +28,13 @@ export const COMMANDS = {
   'paragraph.orderedList': { label: 'Ordered List', accelerator: 'CmdOrCtrl+Shift+[' },
   'paragraph.bulletList': { label: 'Unordered List', accelerator: 'CmdOrCtrl+Shift+]' },
   'paragraph.codeBlock': { label: 'Code Block', accelerator: 'CmdOrCtrl+Shift+K' },
+  'paragraph.table': { label: 'Table', accelerator: 'CmdOrCtrl+T' },
   'paragraph.horizontalRule': { label: 'Horizontal Line' },
 
   'format.bold': { label: 'Bold', accelerator: 'CmdOrCtrl+B' },
   'format.italic': { label: 'Italic', accelerator: 'CmdOrCtrl+I' },
   'format.code': { label: 'Inline Code', accelerator: 'CmdOrCtrl+Shift+`' },
+  'format.strikethrough': { label: 'Strikethrough', accelerator: 'Alt+Shift+5' },
   'format.link': { label: 'Link', accelerator: 'CmdOrCtrl+K' },
 
   'view.sourceMode': { label: 'Source Code Mode', accelerator: 'CmdOrCtrl+/' },

@@ -1,27 +1,66 @@
 import { BrowserWindow, dialog, shell, type WebContents } from 'electron'
+import { randomUUID } from 'crypto'
 import { stat } from 'fs/promises'
 import { basename, dirname, extname, join, resolve } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { IpcChannel, type DocStatus, type LoadedFile } from '../shared/ipc-types'
+import { IpcChannel, type DocStatus, type InitialDoc, type LoadedFile } from '../shared/ipc-types'
 import type { CommandId } from '../shared/commands'
 import { readTextFile } from './services/fileService'
+import { watchFile } from './services/fileWatcher'
+import type { RecoveryStore } from './services/recoveryService'
 
 interface WindowRecord {
   win: BrowserWindow
   status: DocStatus
-  /** File to hand over when the renderer calls windowReady. */
-  initialFile: LoadedFile | null
+  /** What to hand over when the renderer calls windowReady. */
+  initial: InitialDoc
   /** The renderer has called windowReady and is listening for docLoad. */
   ready: boolean
   /** Skip the unsaved-changes prompt on the next close. */
   forceClose: boolean
   /** Paths this window may write to: files opened into it, or chosen in its Save As dialog. */
   writablePaths: Set<string>
+  /** Id of this window's crash-recovery draft. */
+  draftId: string
+  /** Stops watching the document file for outside changes. */
+  unwatch: () => void
 }
 
 const records = new Map<number, WindowRecord>()
 
 const pathKey = (p: string): string => resolve(p).toLowerCase()
+
+let recovery: RecoveryStore | null = null
+
+export function setRecoveryStore(store: RecoveryStore): void {
+  recovery = store
+}
+
+export function getRecoveryStore(): RecoveryStore | null {
+  return recovery
+}
+
+/** Record the window's document state; (re)start watching when the path changes. */
+export function updateStatus(record: WindowRecord, status: DocStatus): void {
+  const pathChanged =
+    (status.path && pathKey(status.path)) !== (record.status.path && pathKey(record.status.path))
+  record.status = status
+  if (pathChanged || !status.path) watchDocument(record)
+}
+
+function watchDocument(record: WindowRecord): void {
+  record.unwatch()
+  record.unwatch = () => {}
+  const path = record.status.path
+  if (!path) return
+  record.unwatch = watchFile(path, () => {
+    readTextFile(path)
+      .then((file) => {
+        if (!record.win.isDestroyed()) record.win.webContents.send(IpcChannel.fileChanged, file)
+      })
+      .catch(() => {}) // deleted or unreadable: keep the open document as is
+  })
+}
 
 export function getRecord(contents: WebContents): WindowRecord | undefined {
   return records.get(contents.id)
@@ -39,7 +78,10 @@ export function sendCommand(win: BrowserWindow, id: CommandId, thenClose = false
   win.webContents.send(IpcChannel.menuCommand, { id, thenClose })
 }
 
-export function createDocumentWindow(file: LoadedFile | null = null): BrowserWindow {
+export function createDocumentWindow(
+  initial: InitialDoc = { file: null, recoveredText: null }
+): BrowserWindow {
+  const file = initial.file
   const win = new BrowserWindow({
     width: 1100,
     height: 800,
@@ -58,17 +100,28 @@ export function createDocumentWindow(file: LoadedFile | null = null): BrowserWin
   const id = win.webContents.id
   const record: WindowRecord = {
     win,
-    status: { path: file?.path ?? null, dirty: false },
-    initialFile: file,
+    status: { path: null, dirty: false },
+    initial,
     ready: false,
     forceClose: false,
-    writablePaths: new Set()
+    writablePaths: new Set(),
+    draftId: randomUUID(),
+    unwatch: () => {}
   }
-  if (file) allowWrite(record, file.path)
+  if (file) {
+    allowWrite(record, file.path)
+    updateStatus(record, { path: file.path, dirty: initial.recoveredText !== null })
+  }
   records.set(id, record)
 
   win.on('ready-to-show', () => win.show())
-  win.on('closed', () => records.delete(id))
+  // A normal close (saved, or "Don't Save") means the draft is no longer needed. After a
+  // crash this never runs, which is what leaves drafts behind for recovery.
+  win.on('closed', () => {
+    record.unwatch()
+    void recovery?.discard(record.draftId)
+    records.delete(id)
+  })
 
   win.on('close', (event) => {
     if (record.forceClose || !record.status.dirty) return
@@ -171,13 +224,13 @@ export async function openFile(path: string, target?: BrowserWindow | null): Pro
 
   const record = target ? records.get(target.webContents.id) : undefined
   if (record && !record.status.path && !record.status.dirty) {
-    record.status = { path: file.path, dirty: false }
+    updateStatus(record, { path: file.path, dirty: false })
     allowWrite(record, file.path)
     if (record.ready) record.win.webContents.send(IpcChannel.docLoad, file)
-    else record.initialFile = file
+    else record.initial = { file, recoveredText: null }
     record.win.focus()
     return
   }
 
-  createDocumentWindow(file)
+  createDocumentWindow({ file, recoveredText: null })
 }

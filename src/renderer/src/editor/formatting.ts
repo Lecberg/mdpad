@@ -98,3 +98,6 @@ export const toggleItalic: Command = (state, dispatch) =>
 
 export const toggleInlineCode: Command = (state, dispatch) =>
   toggleMark(state.schema.marks.inlineCode)(state, dispatch)
+
+export const toggleStrikethrough: Command = (state, dispatch) =>
+  toggleMark(state.schema.marks.strike_through)(state, dispatch)

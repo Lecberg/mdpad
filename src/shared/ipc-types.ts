@@ -21,7 +21,15 @@ export interface LoadedFile extends TextFormat {
   text: string
 }
 
+/** What a new window starts with. */
+export interface InitialDoc {
+  file: LoadedFile | null
+  /** Unsaved text recovered after a crash; shown instead of the file's text. */
+  recoveredText: string | null
+}
+
 export type SaveResult = { ok: true } | { ok: false; error: string }
+export type SaveImageResult = { ok: true; src: string } | { ok: false; error: string }
 
 /** What the main process needs to know about a window's document. */
 export interface DocStatus {
@@ -43,13 +51,17 @@ export const IpcChannel = {
   fileSave: 'file:save',
   fileSaveAsDialog: 'file:save-as-dialog',
   fileOpenLink: 'file:open-link',
+  fileChanged: 'file:changed',
+  imageSave: 'image:save',
+  draftWrite: 'draft:write',
+  draftDiscard: 'draft:discard',
   menuCommand: 'menu:command'
 } as const
 
 export interface MdpadApi {
   versions: RuntimeVersions
-  /** Called once on startup; resolves to the file this window should open, if any. */
-  windowReady(): Promise<LoadedFile | null>
+  /** Called once on startup; resolves to what this window should show. */
+  windowReady(): Promise<InitialDoc>
   /** Close this window without the unsaved-changes prompt (after a successful save). */
   closeWindow(): void
   reportDocStatus(status: DocStatus): void
@@ -57,7 +69,14 @@ export interface MdpadApi {
   showSaveAsDialog(defaultPath: string | null): Promise<string | null>
   /** Open a relative link target (resolved against this window's document folder). */
   openLinkTarget(href: string): void
+  /** Save an image next to this window's (saved) document; returns its relative src. */
+  saveImage(mimeType: string, bytes: Uint8Array): Promise<SaveImageResult>
+  /** Keep a crash-recovery copy of the text this window would save. */
+  writeDraft(text: string, format: TextFormat): void
+  discardDraft(): void
   /** Subscribe to files the main process loads into this window. Returns an unsubscribe fn. */
   onLoadFile(callback: (file: LoadedFile) => void): () => void
+  /** Subscribe to changes of this window's file made by other programs. */
+  onFileChanged(callback: (file: LoadedFile) => void): () => void
   onMenuCommand(callback: (event: MenuCommandEvent) => void): () => void
 }

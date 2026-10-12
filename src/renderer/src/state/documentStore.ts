@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { LoadedFile, TextFormat } from '../../../shared/ipc-types'
+import type { InitialDoc, LoadedFile, TextFormat } from '../../../shared/ipc-types'
 import { ensureFinalNewline } from '../markdown/preserveFormatting'
 
 export type EditorMode = 'wysiwyg' | 'source'
@@ -80,6 +80,53 @@ export const documentStore = {
       current: null,
       normalizes: false,
       sourceText: file.text,
+      dirty: false,
+      changePending: false,
+      saving: false,
+      error: null
+    })
+  },
+
+  /**
+   * Show what a new window was opened with: a file, and/or text recovered after a crash
+   * (which then differs from the disk, so the document starts out dirty).
+   */
+  loadInitial(initial: InitialDoc): void {
+    if (initial.file) documentStore.load(initial.file)
+    if (initial.recoveredText === null) return
+    const text = initial.recoveredText
+    set({
+      loadId: state.loadId + 1,
+      original: text,
+      baseline: null,
+      current: null,
+      sourceText: text,
+      dirty: text !== state.diskText,
+      changePending: false
+    })
+  },
+
+  /** The file changed on disk but the user keeps their version: compare against the new text. */
+  acceptDiskText(text: string): void {
+    const dirty =
+      state.mode === 'source'
+        ? state.sourceText !== text
+        : state.original !== text || (state.baseline !== null && state.current !== state.baseline)
+    set({ diskText: text, dirty })
+  },
+
+  /** Back to an empty untitled document (e.g. discarding a recovered one). */
+  reset(): void {
+    set({
+      loadId: state.loadId + 1,
+      path: null,
+      format: { eol: '\n', bom: false },
+      diskText: '',
+      original: '',
+      baseline: null,
+      current: null,
+      normalizes: false,
+      sourceText: '',
       dirty: false,
       changePending: false,
       saving: false,

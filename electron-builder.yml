@@ -17,9 +17,19 @@ asarUnpack:
   - resources/**
 win:
   executableName: mdpad
+  target:
+    - nsis
+fileAssociations:
+  - ext: [md, markdown, mdown, mkd]
+    name: Markdown
+    description: Markdown document
+    role: Editor
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
 npmRebuild: false

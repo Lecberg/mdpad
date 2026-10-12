@@ -22,24 +22,25 @@
     "test:e2e": "electron-vite build && playwright test"
   },
   "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0"
+  },
+  "devDependencies": {
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-markdown": "6.5.2",
     "@codemirror/language": "6.13.1",
     "@codemirror/language-data": "6.5.2",
+    "@codemirror/search": "6.7.2",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.14",
-    "@electron-toolkit/utils": "^4.0.0",
-    "@lezer/highlight": "1.2.5",
-    "@milkdown/kit": "7.22.3",
-    "@milkdown/react": "7.22.3",
-    "node-diff3": "3.2.1",
-    "remark-stringify": "11.0.0"
-  },
-  "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@lezer/highlight": "1.2.5",
+    "@milkdown/crepe": "7.22.3",
+    "@milkdown/kit": "7.22.3",
+    "@milkdown/react": "7.22.3",
     "@playwright/test": "^1.64.0",
+    "@types/mdast": "4.0.4",
     "@types/node": "^22.19.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -52,9 +53,14 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "happy-dom": "^21.0.1",
+    "mdast-util-to-markdown": "2.2.0",
+    "node-diff3": "3.2.1",
     "prettier": "^3.7.4",
+    "prosemirror-search": "1.1.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "remark-frontmatter": "5.0.0",
+    "remark-stringify": "11.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
     "vitest": "^5.0.3"

@@ -104,9 +104,13 @@ test('saving immediately after typing includes the last keystrokes', async ({ md
   await mdpad.launch(path)
   await mdpad.selectText('Final paragraph.', 'end')
   await mdpad.page.keyboard.type(' Fast.')
-  await mdpad.clickMenu('file.save') // no wait: the change has not been serialized yet
+  // Wait only until the keystrokes are in the document (the menu's IPC message could
+  // otherwise overtake them), then save at once: well before the 150 ms serialization
+  // pause, so the save must read the editor itself.
+  await expect(mdpad.page.locator('.ProseMirror')).toContainText('Final paragraph. Fast.')
+  await mdpad.clickMenu('file.save')
+  await expect.poll(() => mdpad.read(path)).toContain('Final paragraph. Fast.\n')
   await expect(mdpad.page.getByTestId('save-state')).toHaveText('Saved')
-  expect(mdpad.read(path)).toContain('Final paragraph. Fast.\n')
 })
 
 test('closing immediately after typing still prompts', async ({ mdpad }) => {

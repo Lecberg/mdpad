@@ -11,10 +11,18 @@ export function installKeymap(): () => void {
     if (event.isComposing || event.keyCode === 229) return // IME composition in progress
     const id = commandForKey(event)
     if (!id) return
-    // In plain text fields (e.g. the link URL box) leave editing keys to the field.
     const target = event.target as HTMLElement | null
+    const appLevel =
+      id.startsWith('file.') ||
+      id.startsWith('view.') ||
+      id === 'edit.find' ||
+      id === 'edit.replace'
+    // In plain text fields (link URL box, find bar) leave editing keys to the field.
     const inTextField = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA'
-    if (inTextField && !id.startsWith('file.') && !id.startsWith('view.')) return
+    if (inTextField && !appLevel) return
+    // Inside a code block's own editor, Markdown formatting doesn't apply.
+    const inCodeBlock = !!target?.closest?.('.milkdown-code-block')
+    if (inCodeBlock && (id.startsWith('format.') || id.startsWith('paragraph.'))) return
     if (runCommand({ id })) {
       event.preventDefault()
       event.stopPropagation()
