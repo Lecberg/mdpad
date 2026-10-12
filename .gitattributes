@@ -1,0 +1,8 @@
+# Source files: LF in the repo and the working tree, regardless of core.autocrlf.
+* text=auto eol=lf
+
+# Fixtures must keep their exact bytes (CRLF, BOM, etc.) — they test fidelity.
+tests/fixtures/** -text
+
+*.png binary
+*.ico binary
