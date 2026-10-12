@@ -1,0 +1,25 @@
+appId: com.mdpad.app
+productName: mdpad
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!**/.claude/*'
+  - '!src/*'
+  - '!tests/*'
+  - '!docs/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{vitest.config.ts,playwright.config.ts,test-results,playwright-report}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,Typora-UI-Design-Reference.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,tsconfig.test.json}'
+asarUnpack:
+  - resources/**
+win:
+  executableName: mdpad
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+npmRebuild: false
