@@ -19,7 +19,8 @@
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json --composite false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "electron-vite build && playwright test"
+    "test:e2e": "electron-vite build && playwright test",
+    "icons": "electron scripts/build-icons.mjs"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0"

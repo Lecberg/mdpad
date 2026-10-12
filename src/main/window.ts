@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { stat } from 'fs/promises'
 import { basename, dirname, join, resolve } from 'path'
 import { is } from '@electron-toolkit/utils'
+import icon from '../../resources/icon.png?asset'
 import {
   IpcChannel,
   type DocStatus,
@@ -121,6 +122,7 @@ export function createDocumentWindow(
     minHeight: 360,
     show: false,
     title: 'mdpad',
+    icon,
     backgroundColor: backgroundColor(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
