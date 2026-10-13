@@ -12,7 +12,7 @@ What you type is what you see, and your files stay exactly as you wrote them.
 <img src="https://img.shields.io/badge/Electron-39-47848f?style=flat-square&logo=electron&logoColor=white" alt="Electron 39" />
 <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 
-[Features](#features) · [Install](#install) · [Shortcuts](#keyboard-shortcuts) · [Development](#development)
+[Download](https://github.com/Lecberg/mdpad/releases/latest) · [Features](#features) · [Install](#install) · [Shortcuts](#keyboard-shortcuts) · [Development](#development)
 
 </div>
 
@@ -79,7 +79,13 @@ What you type is what you see, and your files stay exactly as you wrote them.
 
 ## Install
 
-mdpad isn't published as a download yet. Build the installer from source:
+Download **`mdpad-1.0.0-setup.exe`** from the [latest release](https://github.com/Lecberg/mdpad/releases/latest) and run it. It adds a Start menu entry and a desktop shortcut, and offers mdpad as an editor for `.md` files.
+
+The installer isn't code-signed yet, so Windows SmartScreen may warn on first run. Click **More info**, then **Run anyway**.
+
+<details>
+<summary>Build the installer from source</summary>
+<br />
 
 ```bash
 git clone https://github.com/Lecberg/mdpad.git
@@ -88,7 +94,9 @@ npm install
 npm run build:win
 ```
 
-Then run `dist/mdpad-1.0.0-setup.exe`. It adds a Start menu entry and a desktop shortcut, and offers mdpad as an editor for `.md` files.
+The installer is written to `dist/`.
+
+</details>
 
 ## Keyboard shortcuts
 
