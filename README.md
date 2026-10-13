@@ -3,6 +3,8 @@
 A personal Typora-style WYSIWYG Markdown editor for Windows, built with Electron, React,
 TypeScript and Milkdown. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
 
+![mdpad editing a weekly plan](docs/screenshot.png)
+
 ## Commands
 
 | Command | What it does |
