@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="resources/icon.png" width="96" alt="mdpad icon" />
+</p>
+
 # mdpad
 
 A personal Typora-style WYSIWYG Markdown editor for Windows, built with Electron, React,
