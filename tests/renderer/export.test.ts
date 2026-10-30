@@ -54,6 +54,14 @@ describe('buildExportHtml', () => {
     expect(html).toContain('not a diagram')
   })
 
+  it('writes the chosen text width and font size into the page', async () => {
+    const html = await buildExportHtml('# Layout\n', {
+      title: 'Layout',
+      layout: { textWidth: 1000, fontSize: 20 }
+    })
+    expect(html).toContain(':root{--export-text-width:1000px;--export-font-size:20px}')
+  })
+
   it('takes the title from the first heading', () => {
     expect(documentTitle('intro\n\n# The *Real* Title\n', 'file')).toBe('The Real Title')
     expect(documentTitle('no heading', 'file')).toBe('file')

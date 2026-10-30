@@ -13,6 +13,7 @@ import { revealMatch } from './commands/openDocument'
 import { runCommand } from './commands/runCommand'
 import { getActiveEditor, getActiveSourceView } from './editor/activeEditor'
 import { MilkdownEditor } from './editor/MilkdownEditor'
+import { ExportDialog } from './export/ExportDialog'
 import { SettingsDialog } from './settings/SettingsDialog'
 import { SourceEditor } from './source/SourceEditor'
 import type { LoadedFile } from '../../shared/ipc-types'
@@ -151,6 +152,7 @@ function App(): React.JSX.Element {
       <LinkPopover />
       <QuickOpen />
       <SettingsDialog />
+      <ExportDialog />
     </div>
   )
 }

@@ -23,7 +23,8 @@
     "icons": "electron scripts/build-icons.mjs"
   },
   "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "pdfjs-dist": "5.4.624"
   },
   "devDependencies": {
     "@codemirror/commands": "6.11.1",

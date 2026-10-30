@@ -7,6 +7,7 @@ import {
   type FsResult,
   type InitialDoc,
   type OpenResult,
+  type PdfPreviewResult,
   type RecentList,
   type SaveChoice,
   type SaveImageResult,
@@ -15,9 +16,10 @@ import {
   type TextFormat
 } from '../shared/ipc-types'
 import type { Settings } from '../shared/settings'
+import { isPdfExportOptions } from '../shared/pdfExport'
 import { services } from './appContext'
 import { MARKDOWN_FILTERS } from './fileFilters'
-import { exportDocument } from './exportService'
+import { exportDocument, printToPdf } from './exportService'
 import { createEntry, renameEntry, revealEntry, trashEntry } from './folderOps'
 import { MAIN_COMMANDS } from './mainCommands'
 import { refreshMenu } from './menu'
@@ -209,11 +211,36 @@ export function registerIpc(): void {
   ipcMain.handle(IpcChannel.recentGet, (): RecentList => services().recent.current)
 
   ipcMain.handle(
+    IpcChannel.exportPreview,
+    async (event, html: unknown, pdfOptions: unknown): Promise<PdfPreviewResult> => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win || !str(html) || !isPdfExportOptions(pdfOptions)) {
+        return { ok: false, error: 'Invalid request.' }
+      }
+      try {
+        return { ok: true, pdf: new Uint8Array(await printToPdf(html, pdfOptions)) }
+      } catch (error) {
+        return { ok: false, error: (error as Error).message }
+      }
+    }
+  )
+
+  ipcMain.handle(
     IpcChannel.exportSave,
-    async (event, kind: unknown, html: unknown, defaultPath: unknown): Promise<FsResult> => {
+    async (
+      event,
+      kind: unknown,
+      html: unknown,
+      defaultPath: unknown,
+      pdfOptions: unknown
+    ): Promise<FsResult> => {
       const win = BrowserWindow.fromWebContents(event.sender)
       if (!win || (kind !== 'html' && kind !== 'pdf') || !str(html) || !str(defaultPath)) {
         return { ok: false, error: 'Invalid request.' }
+      }
+      if (kind === 'pdf') {
+        if (!isPdfExportOptions(pdfOptions)) return { ok: false, error: 'Invalid request.' }
+        return exportDocument(win, kind, html, defaultPath, pdfOptions)
       }
       return exportDocument(win, kind, html, defaultPath)
     }

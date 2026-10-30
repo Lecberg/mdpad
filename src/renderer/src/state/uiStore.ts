@@ -20,6 +20,12 @@ export interface UiState {
   searchFocusRequest: number
   quickOpenOpen: boolean
   settingsOpen: boolean
+  /** The export dialog that is open, if any. */
+  exportDialog: 'pdf' | 'html' | null
+  /** Last settings used for exports; kept only for this window's lifetime. */
+  pdfScalePercent: number
+  htmlTextWidth: number
+  htmlFontSize: number
   /** Scroll position (0–1) to restore after switching between visual and source mode. */
   pendingScrollRatio: number | null
   pendingReveal: Reveal | null
@@ -33,6 +39,10 @@ export const uiStore = createStore<UiState>({
   searchFocusRequest: 0,
   quickOpenOpen: false,
   settingsOpen: false,
+  exportDialog: null,
+  pdfScalePercent: 100,
+  htmlTextWidth: 820,
+  htmlFontSize: 16,
   pendingScrollRatio: null,
   pendingReveal: null,
   statusMessage: null

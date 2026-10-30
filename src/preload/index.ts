@@ -56,8 +56,9 @@ const api: MdpadApi = {
   trashEntry: (path) => ipcRenderer.invoke(IpcChannel.entryTrash, path),
   revealInExplorer: (path) => ipcRenderer.send(IpcChannel.entryReveal, path),
   getRecent: () => ipcRenderer.invoke(IpcChannel.recentGet),
-  exportDocument: (kind, html, defaultPath) =>
-    ipcRenderer.invoke(IpcChannel.exportSave, kind, html, defaultPath)
+  previewPdf: (html, pdfOptions) => ipcRenderer.invoke(IpcChannel.exportPreview, html, pdfOptions),
+  exportDocument: (kind, html, defaultPath, pdfOptions) =>
+    ipcRenderer.invoke(IpcChannel.exportSave, kind, html, defaultPath, pdfOptions)
 }
 
 contextBridge.exposeInMainWorld('api', api)

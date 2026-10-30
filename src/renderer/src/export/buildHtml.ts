@@ -15,6 +15,7 @@ import remarkHighlight from '../markdown/remarkHighlight'
 import remarkMath from '../markdown/remarkMath'
 import { MATH_LANGUAGES } from '../editor/previews'
 import exportCss from './export.css?inline'
+import { DEFAULT_HTML_LAYOUT, type HtmlLayout } from './htmlLayout'
 
 // Turns a document into a standalone HTML page for File › Export (HTML, and PDF, which is
 // printed from this HTML). Raw HTML written in the Markdown is left out, as in the editor.
@@ -27,6 +28,8 @@ export interface ExportOptions {
   renderDiagram?: (source: string) => Promise<string>
   /** Embed the math fonts as data URLs, so the file works offline and on its own. */
   embedFonts?: boolean
+  /** Text column width and font size; the defaults when not given. */
+  layout?: HtmlLayout
 }
 
 const escapeHtml = (text: string): string =>
@@ -142,7 +145,11 @@ export async function buildExportHtml(markdown: string, options: ExportOptions):
   })
   const body = toHtml.stringify(await toHtml.run(tree))
 
-  const styles = [exportCss]
+  const layout = options.layout ?? DEFAULT_HTML_LAYOUT
+  const styles = [
+    `:root{--export-text-width:${layout.textWidth}px;--export-font-size:${layout.fontSize}px}`,
+    exportCss
+  ]
   if (hasMath) styles.push(options.embedFonts ? await embedFontUrls(katexCss) : katexCss)
   const base = options.baseHref ? `<base href="${escapeHtml(options.baseHref)}">` : ''
   return [

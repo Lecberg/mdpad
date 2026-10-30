@@ -13,12 +13,12 @@ body {
   margin: 0;
   color: #333333;
   font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: var(--export-font-size, 16px);
   line-height: 1.7;
 }
 
 .markdown-body {
-  max-width: 820px;
+  max-width: var(--export-text-width, 820px);
   margin: 0 auto;
   padding: 48px 40px 64px;
 }

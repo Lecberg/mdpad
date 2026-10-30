@@ -26,7 +26,6 @@ import {
 } from '../editor/formatting'
 import { toggleHighlight } from '../editor/plugins/highlight'
 import { updateSettings, settingsStore } from '../state/settingsStore'
-import { exportDocument } from './exportDocument'
 import { openLinkEditor } from '../editor/links'
 import { normalizeWith, serializeEditor } from '../editor/markdownCore'
 import { textToSave } from '../markdown/saveText'
@@ -235,8 +234,8 @@ const HANDLERS: Record<CommandId, (event: MenuCommandEvent) => boolean> = {
   'file.closeFolder': forwardToMain,
   'file.close': forwardToMain,
   'file.quickOpen': () => (uiStore.set({ quickOpenOpen: !uiStore.get().quickOpenOpen }), true),
-  'file.exportHtml': () => (void exportDocument('html'), true),
-  'file.exportPdf': () => (void exportDocument('pdf'), true),
+  'file.exportHtml': () => (uiStore.set({ exportDialog: 'html' }), true),
+  'file.exportPdf': () => (uiStore.set({ exportDialog: 'pdf' }), true),
   'file.preferences': () => (uiStore.set({ settingsOpen: true, quickOpenOpen: false }), true),
   'file.save': (e) => (void saveDocument({ thenClose: e.thenClose }), true),
   'file.saveAs': (e) => (void saveDocument({ saveAs: true, thenClose: e.thenClose }), true),

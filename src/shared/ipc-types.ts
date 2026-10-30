@@ -2,6 +2,7 @@
 // Main-process handlers, the preload bridge, and the renderer all import from here.
 
 import type { CommandId, MainCommandId } from './commands'
+import type { PdfExportOptions } from './pdfExport'
 import type { Settings } from './settings'
 
 export interface RuntimeVersions {
@@ -95,6 +96,8 @@ export type FsResult = { ok: true; path: string } | { ok: false; error?: string 
 
 export type SaveChoice = 'save' | 'discard' | 'cancel'
 
+export type PdfPreviewResult = { ok: true; pdf: Uint8Array } | { ok: false; error: string }
+
 export interface RecentList {
   files: string[]
   folders: string[]
@@ -129,7 +132,8 @@ export const IpcChannel = {
   entryTrash: 'entry:trash',
   entryReveal: 'entry:reveal',
   recentGet: 'recent:get',
-  exportSave: 'export:save'
+  exportSave: 'export:save',
+  exportPreview: 'export:preview'
 } as const
 
 export interface MdpadApi {
@@ -179,6 +183,13 @@ export interface MdpadApi {
   trashEntry(path: string): Promise<FsResult>
   revealInExplorer(path: string): void
   getRecent(): Promise<RecentList>
+  /** Print `html` to PDF with the given options, for the export dialog's preview only. */
+  previewPdf(html: string, pdfOptions: PdfExportOptions): Promise<PdfPreviewResult>
   /** Ask where to save, then write `html` as an HTML file or print it to PDF. */
-  exportDocument(kind: 'html' | 'pdf', html: string, defaultPath: string): Promise<FsResult>
+  exportDocument(
+    kind: 'html' | 'pdf',
+    html: string,
+    defaultPath: string,
+    pdfOptions?: PdfExportOptions
+  ): Promise<FsResult>
 }
