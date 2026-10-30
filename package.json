@@ -1,6 +1,6 @@
 {
   "name": "mdpad",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A personal Typora-style WYSIWYG Markdown editor for Windows",
   "main": "./out/main/index.js",
   "author": "mdpad",
