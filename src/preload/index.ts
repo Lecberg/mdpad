@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, type IpcRendererEvent } from 'electron'
 import {
   IpcChannel,
   type FolderSnapshot,
@@ -62,3 +62,11 @@ const api: MdpadApi = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+
+// View › Zoom factor as a CSS variable, so images can keep growing with the text. Zooming
+// changes the page's width in CSS pixels, so every change fires 'resize'.
+function publishZoomFactor(): void {
+  document.documentElement.style.setProperty('--zoom-factor', String(webFrame.getZoomFactor()))
+}
+window.addEventListener('DOMContentLoaded', publishZoomFactor)
+window.addEventListener('resize', publishZoomFactor)

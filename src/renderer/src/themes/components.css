@@ -218,9 +218,26 @@
 
 /* ---------- Images ---------- */
 
+/* An image is capped at the column width it would have at 100% zoom, so zooming in enlarges
+   it like the text even once the column fills the window; it then scrolls sideways within
+   its paragraph. --zoom-factor is set by the preload. */
 .milkdown .md-image img {
-  max-width: 100%;
+  --zoom: var(--zoom-factor, 1);
+  max-width: max(
+    100%,
+    min(var(--text-width), calc(100% * var(--zoom) + (var(--zoom) - 1) * 2 * var(--page-padding-x)))
+  );
   vertical-align: bottom;
+}
+
+.milkdown p:has(.md-image) {
+  overflow-x: auto;
+}
+
+/* ProseMirror puts an empty separator before an image that starts a paragraph; taken out of
+   the flow, it can't push an image wider than the paragraph onto a second line. */
+.milkdown p:has(.md-image) > img.ProseMirror-separator:first-child {
+  position: absolute;
 }
 
 .milkdown .md-image.ProseMirror-selectednode {
@@ -229,6 +246,8 @@
 
 .milkdown .md-image.ProseMirror-selectednode img {
   outline: 2px solid var(--color-focus);
+  /* Drawn inside the image, so the paragraph's scroll box doesn't clip it. */
+  outline-offset: -2px;
 }
 
 .milkdown .md-image-broken {

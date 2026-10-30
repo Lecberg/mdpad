@@ -69,6 +69,57 @@ test('pasting an image saves it next to the document and shows it', async ({ mdp
   expect(mdpad.read(path)).toContain(`![](<My Note.assets/${assets[0]}>)`)
 })
 
+test('zooming in enlarges wide images, which then scroll within their paragraph', async ({
+  mdpad
+}) => {
+  mdpad.writeFile(
+    'wide.svg',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="100">' +
+      '<rect width="2000" height="100" fill="#4a90d9"/></svg>'
+  )
+  const path = mdpad.writeFile('note.md', 'Text before.\n\n![wide](wide.svg)\n')
+  await mdpad.launch(path)
+  const { app, page } = mdpad
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 700))
+
+  const img = page.locator('.ProseMirror .md-image img')
+  await expect
+    .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0)
+  // On-screen width of the image, whether its paragraph scrolls sideways, and whether it sits
+  // on the paragraph's first line (rather than being wrapped below an empty one).
+  const measure = (): Promise<{ screenWidth: number; scrolls: boolean; firstLine: boolean }> =>
+    img.evaluate((el) => {
+      const zoom = Number(
+        getComputedStyle(document.documentElement).getPropertyValue('--zoom-factor')
+      )
+      const p = el.closest('p')!
+      return {
+        screenWidth: el.getBoundingClientRect().width * zoom,
+        scrolls: p.scrollWidth > p.clientWidth,
+        firstLine: el.getBoundingClientRect().top - p.getBoundingClientRect().top < 1
+      }
+    })
+  const setZoom = (factor: number): Promise<void> =>
+    app.evaluate(
+      ({ BrowserWindow }, f) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(f),
+      factor
+    )
+
+  const atStart = await measure()
+  expect(atStart.scrolls).toBe(false)
+
+  await setZoom(1.5)
+  await expect
+    .poll(async () => (await measure()).screenWidth)
+    .toBeCloseTo(atStart.screenWidth * 1.5, 0)
+  expect(await measure()).toMatchObject({ scrolls: true, firstLine: true })
+
+  await setZoom(1)
+  await expect.poll(async () => (await measure()).screenWidth).toBeCloseTo(atStart.screenWidth, 0)
+  expect((await measure()).scrolls).toBe(false)
+})
+
 test('find highlights matches and replace all rewrites them', async ({ mdpad }) => {
   const path = mdpad.writeFile('note.md', 'cat and cat\n\nanother cat\n')
   await mdpad.launch(path)
