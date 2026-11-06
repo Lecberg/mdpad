@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { EXPORT_PARTITION, printWindowPreferences } from '../../src/main/exportWindow'
 import { isPdfExportOptions, PDF_SCALE_PERCENT } from '../../src/shared/pdfExport'
 
 describe('isPdfExportOptions', () => {
@@ -20,5 +21,17 @@ describe('isPdfExportOptions', () => {
       { scale: PDF_SCALE_PERCENT.max / 100 + 0.01 }
     ]
     for (const value of invalid) expect(isPdfExportOptions(value)).toBe(false)
+  })
+})
+
+describe('the export window', () => {
+  it('uses an in-memory session with scripts disabled', () => {
+    expect(EXPORT_PARTITION.startsWith('persist:')).toBe(false)
+    expect(printWindowPreferences()).toEqual({
+      partition: EXPORT_PARTITION,
+      sandbox: true,
+      contextIsolation: true,
+      javascript: false
+    })
   })
 })

@@ -15,6 +15,26 @@ export interface Draft {
   savedAt: string
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+export function isTextFormat(value: unknown): value is TextFormat {
+  if (!isRecord(value)) return false
+  return (value.eol === '\n' || value.eol === '\r\n') && typeof value.bom === 'boolean'
+}
+
+/** A draft parsed from disk; anything else is ignored rather than handed to a window. */
+export function isDraft(value: unknown): value is Draft {
+  if (!isRecord(value)) return false
+  return (
+    value.version === 1 &&
+    typeof value.text === 'string' &&
+    (value.path === null || typeof value.path === 'string') &&
+    typeof value.savedAt === 'string' &&
+    isTextFormat(value.format)
+  )
+}
+
 export class RecoveryStore {
   /** Per-draft operation chains, so a late write can never land after a discard. */
   private readonly queues = new Map<string, Promise<void>>()
@@ -58,8 +78,8 @@ export class RecoveryStore {
     const drafts: Array<{ id: string; draft: Draft }> = []
     for (const name of names.filter((n) => n.endsWith('.json'))) {
       try {
-        const draft = JSON.parse(await fs.readFile(join(this.dir, name), 'utf8')) as Draft
-        if (draft.version === 1 && typeof draft.text === 'string') {
+        const draft: unknown = JSON.parse(await fs.readFile(join(this.dir, name), 'utf8'))
+        if (isDraft(draft)) {
           drafts.push({ id: name.slice(0, -'.json'.length), draft })
         }
       } catch {

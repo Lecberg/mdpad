@@ -2,8 +2,13 @@ import { dialog, shell } from 'electron'
 import { promises as fs } from 'fs'
 import { basename, dirname, join, resolve } from 'path'
 import type { FsResult } from '../shared/ipc-types'
-import { invalidNameReason, isInsideFolder, isMarkdownPath } from './services/folderService'
-import { allowWrite, documentsMoved, pathKey, type WindowRecord } from './window'
+import {
+  invalidNameReason,
+  isInsideFolder,
+  isMarkdownPath,
+  isRealParentInsideFolder
+} from './services/folderService'
+import { documentsMoved, pathKey, type WindowRecord } from './window'
 
 // File-tree operations requested by a window's renderer. Every path must be inside that
 // window's open folder; the folder itself can't be renamed or deleted from the tree.
@@ -15,6 +20,15 @@ function checkInside(record: WindowRecord, path: string, allowRoot: boolean): st
   if (!root || !isInsideFolder(root, path)) return 'That item isn’t in the open folder.'
   if (!allowRoot && pathKey(path) === pathKey(root))
     return 'The open folder itself can’t be changed.'
+  return null
+}
+
+/** checkInside, plus a real-path check so junctions can't escape the open folder. */
+async function checkInsideReal(record: WindowRecord, itemPath: string): Promise<string | null> {
+  const root = record.folder?.root
+  if (!root || !(await isRealParentInsideFolder(root, itemPath))) {
+    return 'That item isn’t in the open folder.'
+  }
   return null
 }
 
@@ -30,6 +44,8 @@ export async function createEntry(
     return { ok: false, error: 'New files must be Markdown files (.md).' }
   }
   const path = join(resolve(parentDir), name)
+  const realProblem = await checkInsideReal(record, path)
+  if (realProblem) return { ok: false, error: realProblem }
   try {
     if (kind === 'dir') await fs.mkdir(path)
     else await fs.writeFile(path, '', { flag: 'wx' })
@@ -37,7 +53,6 @@ export async function createEntry(
     const exists = (error as NodeJS.ErrnoException).code === 'EEXIST'
     return { ok: false, error: exists ? `“${name}” already exists.` : errorMessage(error) }
   }
-  if (kind === 'file') allowWrite(record, path)
   await record.folder?.refresh()
   return { ok: true, path }
 }
@@ -52,6 +67,8 @@ export async function renameEntry(
   const from = resolve(path)
   const to = join(dirname(from), newName)
   if (to === from) return { ok: true, path: to }
+  const realProblem = await checkInsideReal(record, from)
+  if (realProblem) return { ok: false, error: realProblem }
   // A change of letter case only is allowed even though Windows sees the same file.
   if (pathKey(to) !== pathKey(from)) {
     const exists = await fs.stat(to).then(
@@ -74,6 +91,8 @@ export async function trashEntry(record: WindowRecord, path: string): Promise<Fs
   const problem = checkInside(record, path, false)
   if (problem) return { ok: false, error: problem }
   const full = resolve(path)
+  const realProblem = await checkInsideReal(record, full)
+  if (realProblem) return { ok: false, error: realProblem }
   const isDir = await fs.stat(full).then(
     (info) => info.isDirectory(),
     () => false

@@ -1,15 +1,8 @@
 import { promises as fs } from 'fs'
 import { basename, dirname, extname, join } from 'path'
+import { IMAGE_MIME_EXTENSIONS, imageBytesProblem } from '../../shared/imageBytes'
 
-export const IMAGE_MIME_EXTENSIONS: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-  'image/bmp': 'bmp',
-  'image/avif': 'avif'
-}
+export { IMAGE_MIME_EXTENSIONS }
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -32,6 +25,9 @@ export async function saveImageNextTo(
   bytes: Uint8Array,
   now = new Date()
 ): Promise<string> {
+  const problem = imageBytesProblem(mimeType, bytes)
+  if (problem) throw new Error(problem)
+
   const ext = IMAGE_MIME_EXTENSIONS[mimeType]
   if (!ext) throw new Error(`Unsupported image type: ${mimeType || 'unknown'}`)
 

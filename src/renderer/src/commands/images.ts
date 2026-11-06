@@ -1,3 +1,4 @@
+import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from '../../../shared/imageBytes'
 import { documentStore } from '../state/documentStore'
 import { saveDocument } from './runCommand'
 
@@ -16,6 +17,11 @@ export async function saveImages(files: File[]): Promise<Array<string | null>> {
   const results: Array<string | null> = []
   let firstError: string | null = null
   for (const file of files) {
+    if (file.size > MAX_IMAGE_BYTES) {
+      results.push(null)
+      firstError ??= `“${file.name}” is larger than ${MAX_IMAGE_MB} MB.`
+      continue
+    }
     try {
       const result = await window.api.saveImage(file.type, new Uint8Array(await file.arrayBuffer()))
       results.push(result.ok ? result.src : null)

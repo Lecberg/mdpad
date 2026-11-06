@@ -23,7 +23,7 @@ import { exportDocument, printToPdf } from './exportService'
 import { createEntry, renameEntry, revealEntry, trashEntry } from './folderOps'
 import { MAIN_COMMANDS } from './mainCommands'
 import { refreshMenu } from './menu'
-import { writeTextFile } from './services/fileService'
+import { decodeText, encodeText, writeTextFile } from './services/fileService'
 import { flattenFiles, searchFiles } from './services/folderService'
 import { saveImageNextTo } from './services/imageService'
 import {
@@ -33,6 +33,7 @@ import {
   getRecord,
   loadIntoWindow,
   openLinkTarget,
+  pathKey,
   updateStatus
 } from './window'
 
@@ -66,7 +67,10 @@ export function registerIpc(): void {
 
   ipcMain.on(IpcChannel.docStatus, (event, status: DocStatus) => {
     const record = getRecord(event.sender)
-    if (record) updateStatus(record, status)
+    if (!record) return
+    // A null report before the window has loaded its document is not a reset.
+    if (status.path) record.reportedPath = true
+    updateStatus(record, status)
   })
 
   ipcMain.on(IpcChannel.mainCommand, (event, id: unknown) => {
@@ -80,10 +84,17 @@ export function registerIpc(): void {
       if (!record || !canWrite(record, path)) {
         return { ok: false, error: 'This window is not allowed to write to that path.' }
       }
+      const key = pathKey(path)
+      let pendingText: string | null = null
       try {
+        // Note the text the watcher will read before the write starts, so the resulting
+        // change event is recognised as our own even if it arrives during the save.
+        pendingText = decodeText(encodeText(text, format)).text
+        record.pendingWrites.note(key, pendingText)
         await writeTextFile(path, text, format)
         return { ok: true }
       } catch (error) {
+        if (pendingText !== null) record.pendingWrites.forget(key, pendingText)
         return { ok: false, error: (error as Error).message }
       }
     }

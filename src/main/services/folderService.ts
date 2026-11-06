@@ -1,5 +1,5 @@
 import { promises as fs, type Dirent } from 'fs'
-import { extname, isAbsolute, join, relative, resolve } from 'path'
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'path'
 import type {
   FolderSnapshot,
   SearchFileResult,
@@ -87,6 +87,23 @@ export function flattenFiles(nodes: TreeNode[], out: string[] = []): string[] {
 export function isInsideFolder(root: string, path: string): boolean {
   const rel = relative(resolve(root).toLowerCase(), resolve(path).toLowerCase())
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
+/**
+ * Like isInsideFolder, but resolves junctions and symlinks: the item's parent directory
+ * must really be inside the root. Used before creating, renaming or deleting through the
+ * file tree, where a junction inside the folder could otherwise point anywhere.
+ */
+export async function isRealParentInsideFolder(root: string, itemPath: string): Promise<boolean> {
+  try {
+    const [rootReal, parentReal] = await Promise.all([
+      fs.realpath(resolve(root)),
+      fs.realpath(dirname(resolve(itemPath)))
+    ])
+    return isInsideFolder(rootReal, parentReal)
+  } catch {
+    return false
+  }
 }
 
 const RESERVED_NAMES = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i

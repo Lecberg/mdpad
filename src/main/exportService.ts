@@ -5,6 +5,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import type { FsResult } from '../shared/ipc-types'
 import type { PdfExportOptions } from '../shared/pdfExport'
+import { printWindowPreferences } from './exportWindow'
 
 // File > Export: the renderer builds a standalone HTML page; here it is saved as is, or
 // printed to PDF from a hidden window with scripts disabled.
@@ -24,8 +25,13 @@ export async function printToPdf(
   await fs.writeFile(page, html, 'utf8')
   const win = new BrowserWindow({
     show: false,
-    webPreferences: { sandbox: true, contextIsolation: true, javascript: false }
+    webPreferences: printWindowPreferences()
   })
+  // Remote images may still load; nothing in an exported page may ask for a permission.
+  win.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) =>
+    callback(false)
+  )
+  win.webContents.session.setPermissionCheckHandler(() => false)
   win.webContents.on('will-navigate', (event) => event.preventDefault())
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   try {

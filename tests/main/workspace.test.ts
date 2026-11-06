@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -8,6 +8,7 @@ import {
   flattenFiles,
   invalidNameReason,
   isInsideFolder,
+  isRealParentInsideFolder,
   scanFolder,
   searchFiles
 } from '../../src/main/services/folderService'
@@ -130,6 +131,35 @@ describe('names and paths', () => {
     expect(isInsideFolder('C:\\Notes', 'C:\\Notes2\\a.md')).toBe(false)
     expect(isInsideFolder('C:\\Notes', 'D:\\Notes\\a.md')).toBe(false)
   })
+})
+
+describe('real path containment', () => {
+  it('checks the resolved parent directory', async () => {
+    mkdirSync(join(dir, 'notes', 'deep'), { recursive: true })
+    expect(await isRealParentInsideFolder(dir, join(dir, 'notes', 'a.md'))).toBe(true)
+    expect(await isRealParentInsideFolder(join(dir, 'notes'), join(dir, 'a.md'))).toBe(false)
+    expect(await isRealParentInsideFolder(dir, join(dir, 'missing', 'a.md'))).toBe(false)
+  })
+
+  it.skipIf(process.platform !== 'win32')(
+    'rejects creating through a junction that points outside the folder',
+    async (ctx) => {
+      const outside = mkdtempSync(join(tmpdir(), 'mdpad-outside-'))
+      try {
+        try {
+          symlinkSync(outside, join(dir, 'link'), 'junction')
+        } catch {
+          ctx.skip()
+          return
+        }
+        expect(await isRealParentInsideFolder(dir, join(dir, 'link', 'new.md'))).toBe(false)
+        // The link itself is inside the folder, so trashing/renaming it stays allowed.
+        expect(await isRealParentInsideFolder(dir, join(dir, 'link'))).toBe(true)
+      } finally {
+        rmSync(outside, { recursive: true, force: true })
+      }
+    }
+  )
 })
 
 describe('FolderSession', () => {

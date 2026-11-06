@@ -225,3 +225,16 @@ test('with unsaved edits, an outside change asks before reloading', async ({ mdp
   await expect(page.locator('.ProseMirror')).toContainText('Changed elsewhere')
   await expect(page.getByTestId('save-state')).toHaveText('Saved')
 })
+
+test('saving does not look like an outside change', async ({ mdpad }) => {
+  const path = mdpad.writeFile('note.md', 'Original text\n')
+  await mdpad.launch(path)
+  const { page } = mdpad
+  await mdpad.selectText('Original text', 'end')
+  await page.keyboard.type(' plus mine')
+  await page.keyboard.press('Control+s')
+  await expect(page.getByTestId('save-state')).toHaveText('Saved')
+  // Give the directory watcher (150 ms debounce) time to deliver our own save.
+  await page.waitForTimeout(800)
+  await expect(page.getByTestId('notice')).toHaveCount(0)
+})

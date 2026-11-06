@@ -8,7 +8,7 @@
 What you type is what you see, and your files stay exactly as you wrote them.
 
 <a href="#install"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011-2f74c0?style=flat-square" alt="Windows 10 and 11" /></a>
-<img src="https://img.shields.io/badge/version-1.1.0-2f74c0?style=flat-square" alt="Version 1.1.0" />
+<img src="https://img.shields.io/badge/version-1.1.1-2f74c0?style=flat-square" alt="Version 1.1.1" />
 <img src="https://img.shields.io/badge/Electron-39-47848f?style=flat-square&logo=electron&logoColor=white" alt="Electron 39" />
 <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 
@@ -79,7 +79,7 @@ What you type is what you see, and your files stay exactly as you wrote them.
 
 ## Install
 
-Download **`mdpad-1.1.0-setup.exe`** from the [latest release](https://github.com/Lecberg/mdpad/releases/latest) and run it. It adds a Start menu entry and a desktop shortcut, and offers mdpad as an editor for `.md` files.
+Download **`mdpad-1.1.1-setup.exe`** from the [latest release](https://github.com/Lecberg/mdpad/releases/latest) and run it. It adds a Start menu entry and a desktop shortcut, and offers mdpad as an editor for `.md` files.
 
 The installer isn't code-signed yet, so Windows SmartScreen may warn on first run. Click **More info**, then **Run anyway**.
 

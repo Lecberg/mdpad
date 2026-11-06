@@ -18,6 +18,8 @@ import { FolderSession } from './folderSession'
 import { readTextFile } from './services/fileService'
 import { watchFile } from './services/fileWatcher'
 import { isInsideFolder, isMarkdownPath } from './services/folderService'
+import { PendingWrites } from './services/pendingWrites'
+import { pruneWritablePaths } from './services/writablePaths'
 
 export interface WindowRecord {
   win: BrowserWindow
@@ -30,6 +32,10 @@ export interface WindowRecord {
   forceClose: boolean
   /** Paths this window may write to: files opened into it, or chosen in its Save As dialog. */
   writablePaths: Set<string>
+  /** The renderer has reported a document path at least once (not just startup's null). */
+  reportedPath: boolean
+  /** Text this window recently wrote, so the watcher ignores its own saves. */
+  pendingWrites: PendingWrites
   /** Id of this window's crash-recovery draft. */
   draftId: string
   /** Stops watching the document file for outside changes. */
@@ -49,8 +55,21 @@ const backgroundColor = (): string => (nativeTheme.shouldUseDarkColors ? '#1f212
 
 /** Record the window's document state; (re)start watching when the path changes. */
 export function updateStatus(record: WindowRecord, status: DocStatus): void {
-  const pathChanged =
-    (status.path && pathKey(status.path)) !== (record.status.path && pathKey(record.status.path))
+  const previousKey = record.status.path ? pathKey(record.status.path) : null
+  const nextKey = status.path ? pathKey(status.path) : null
+  const pathChanged = previousKey !== nextKey
+  // The window now edits one document; permissions for the old path are no longer needed.
+  // A null status can also be the renderer's startup report before it has loaded the file
+  // the main process opened, so only clear once a real path has been reported.
+  if (pathChanged) {
+    if (nextKey) {
+      pruneWritablePaths(record.writablePaths, nextKey)
+    } else if (record.reportedPath) {
+      pruneWritablePaths(record.writablePaths, null)
+      record.reportedPath = false
+    }
+    if (previousKey) record.pendingWrites.clearPath(previousKey)
+  }
   record.status = status
   if (pathChanged || !status.path) watchDocument(record)
   if (pathChanged && status.path) void services().recent.addFile(status.path)
@@ -64,7 +83,12 @@ function watchDocument(record: WindowRecord): void {
   record.unwatch = watchFile(path, () => {
     readTextFile(path)
       .then((file) => {
-        if (!record.win.isDestroyed()) record.win.webContents.send(IpcChannel.fileChanged, file)
+        if (record.win.isDestroyed()) return
+        // Ignore a late read from a watcher for a path this window no longer edits.
+        if (!record.status.path || pathKey(record.status.path) !== pathKey(path)) return
+        // Our own save: the renderer already has this text.
+        if (record.pendingWrites.matches(pathKey(path), file.text)) return
+        record.win.webContents.send(IpcChannel.fileChanged, file)
       })
       .catch(() => {}) // deleted or unreadable: keep the open document as is
   })
@@ -140,6 +164,8 @@ export function createDocumentWindow(
     ready: false,
     forceClose: false,
     writablePaths: new Set(),
+    reportedPath: false,
+    pendingWrites: new PendingWrites(),
     draftId: randomUUID(),
     unwatch: () => {},
     folder: null
